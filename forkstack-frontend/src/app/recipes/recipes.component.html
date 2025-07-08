@@ -1,0 +1,33 @@
+<div class="container">
+    <h1>Recipes</h1>
+  
+    <input
+      [(ngModel)]="search"
+      (keyup.enter)="searchRecipes()"
+      placeholder="Search Recipe"
+    />
+    <button (click)="searchRecipes()">Search</button>
+  
+    <div *ngIf="filtered.length === 0">No recipes found.</div>
+  
+    <div
+        class="recipe"
+        *ngFor="let recipe of filtered"
+        [routerLink]="[recipe.recipe_id]"
+    >
+        <h2>{{ recipe.title }}</h2>
+    </div>
+  
+  
+    <div class="pagination">
+      <button (click)="prevPage()" [disabled]="page === 1">Previous</button>
+      <span>Page {{ page }}</span>
+      <button
+        (click)="nextPage()"
+        [disabled]="page * 10 >= recipes.length"
+      >
+        Next
+      </button>
+    </div>
+  </div>
+  

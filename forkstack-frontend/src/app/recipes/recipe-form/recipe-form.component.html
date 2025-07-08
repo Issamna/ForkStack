@@ -1,0 +1,65 @@
+<h2>Add Recipe</h2>
+
+<form (ngSubmit)="submit()">
+  <label>Title</label>
+  <input [(ngModel)]="title" name="title" required />
+
+  <label>Ingredients</label>
+  <div class="ingredients">
+    <div class="ingredient-group" *ngFor="let ing of ingredients; let i = index">
+      <input
+        [(ngModel)]="ing.name"
+        name="name-{{ i }}"
+        placeholder="Name"
+        required
+        class="name"
+      />
+      <input
+        [(ngModel)]="ing.quantity"
+        name="qty-{{ i }}"
+        placeholder="Qty"
+        required
+        class="qty"
+      />
+      <input
+        [(ngModel)]="ing.measurement_type"
+        name="measure-{{ i }}"
+        placeholder="Unit"
+        required
+        class="unit"
+      />
+      <button
+        type="button"
+        class="circle-btn"
+        (click)="removeIngredient(i)"
+        title="Remove"
+      >
+        &minus;
+      </button>
+    </div>
+  </div>
+  
+  
+  <button type="button" class="circle-btn add-btn" (click)="addIngredient()">
+    +
+  </button>
+
+  <label>Instructions</label>
+  <div class="instructions">
+    <div class="instruction-group" *ngFor="let step of instructions; let i = index">
+      <span class="step-number">{{ i + 1 }}.</span>
+      <input
+        [(ngModel)]="step.text"
+        name="step-{{ i }}"
+        placeholder="Instruction step"
+        required
+      />
+      <button type="button" (click)="removeInstruction(i)" title="Remove">−</button>
+    </div>
+  </div>
+
+  <button type="button" class="add-btn" (click)="addInstruction()">+ Add Step</button>
+
+  
+  <button type="submit" class="submit-btn">Save</button>
+</form>

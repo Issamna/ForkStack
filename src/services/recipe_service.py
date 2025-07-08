@@ -20,7 +20,7 @@ def create(recipe: RecipeIn):
         "recipe_id": recipe_id,
         "title": recipe.title,
         "ingredients": [i.dict() for i in recipe.ingredients],
-        "instructions": recipe.instructions,
+        "instructions": [s.dict() for s in recipe.instructions],
     }
     table.put_item(Item=item)
     return item
@@ -52,7 +52,7 @@ def update(recipe_id: str, recipe: RecipeIn):
         "recipe_id": recipe_id,
         "title": recipe.title,
         "ingredients": [i.dict() for i in recipe.ingredients],
-        "instructions": recipe.instructions,
+        "instructions": [s.dict() for s in recipe.instructions],
     }
     table.put_item(Item=updated)
     return updated
