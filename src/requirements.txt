@@ -1,6 +1,2 @@
 fastapi
 mangum
-pydantic[email]
-passlib
-python-jose
-python-multipart

@@ -3,10 +3,6 @@
 <form (ngSubmit)="submit()">
   <label>Title</label>
   <input [(ngModel)]="title" name="title" required />
-  <label>
-    <input type="checkbox" [(ngModel)]="is_shareable" name="is_shareable" />
-    Share this recipe publicly
-  </label>
 
   <label>Ingredients</label>
   <div class="ingredients">

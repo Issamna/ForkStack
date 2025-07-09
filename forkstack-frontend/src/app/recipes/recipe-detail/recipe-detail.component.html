@@ -1,6 +1,5 @@
 <div *ngIf="recipe; else loading">
     <h1>{{ recipe.title }}</h1>
-    <div *ngIf="isOwner()">
     <button (click)="deleteRecipe()" class="delete-btn">Delete</button>
     <a
       [routerLink]="['/recipes', recipe.recipe_id, 'edit']"
@@ -8,7 +7,6 @@
     >
       Edit
     </a>
-  </div>
 
   
     <h3>Ingredients</h3>

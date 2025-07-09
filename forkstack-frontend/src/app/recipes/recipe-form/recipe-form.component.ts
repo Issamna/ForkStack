@@ -13,7 +13,6 @@ export class RecipeFormComponent implements OnInit {
   instructions = [{ step_number: 1, text: '' }];
   editing = false;
   recipe_id: string | null = null;
-  is_shareable = false;
 
   constructor(
     private recipeService: RecipeService,
@@ -30,7 +29,6 @@ export class RecipeFormComponent implements OnInit {
         this.title = recipe.title;
         this.ingredients = recipe.ingredients;
         this.instructions = recipe.instructions;
-        this.is_shareable = recipe.is_shareable;
       });
     }
   }
@@ -80,8 +78,7 @@ export class RecipeFormComponent implements OnInit {
     const recipeData = {
       title: this.title,
       ingredients: this.ingredients,
-      instructions: this.instructions,
-      is_shareable: this.is_shareable
+      instructions: this.instructions
     };
 
     const done = () => this.router.navigate(['/recipes']);
