@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { RecipeService, Recipe } from '../recipe.service';
+import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-recipe-detail',
@@ -13,7 +14,8 @@ export class RecipeDetailComponent implements OnInit {
   constructor(
     private route: ActivatedRoute,
     private recipeService: RecipeService,
-    private router: Router
+    private router: Router,
+    private auth: AuthService
   ) {}
 
   ngOnInit(): void {
@@ -34,4 +36,10 @@ export class RecipeDetailComponent implements OnInit {
       });
     }
   }
+
+  isOwner(): boolean {
+    const currentUserId = this.auth.getUserId();
+    return this.recipe?.owner_id === currentUserId;
+  }
+  
 }

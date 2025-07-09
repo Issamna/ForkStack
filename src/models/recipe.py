@@ -14,6 +14,8 @@ class RecipeIn(BaseModel):
     title: str
     ingredients: List[Ingredient]
     instructions: List[InstructionStep]
+    is_shareable: bool = False
+    owner_id: str
 
 class RecipeOut(RecipeIn):
     recipe_id: str
