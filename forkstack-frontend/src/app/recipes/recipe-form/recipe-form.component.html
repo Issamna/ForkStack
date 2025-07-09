@@ -10,7 +10,10 @@
 
   <label>Ingredients</label>
   <div class="ingredients">
-    <div class="ingredient-group" *ngFor="let ing of ingredients; let i = index">
+    <div
+      class="ingredient-group"
+      *ngFor="let ing of ingredients; let i = index"
+    >
       <input
         [(ngModel)]="ing.name"
         name="name-{{ i }}"
@@ -42,15 +45,17 @@
       </button>
     </div>
   </div>
-  
-  
+
   <button type="button" class="circle-btn add-btn" (click)="addIngredient()">
     +
   </button>
 
   <label>Instructions</label>
   <div class="instructions">
-    <div class="instruction-group" *ngFor="let step of instructions; let i = index">
+    <div
+      class="instruction-group"
+      *ngFor="let step of instructions; let i = index"
+    >
       <span class="step-number">{{ i + 1 }}.</span>
       <input
         [(ngModel)]="step.text"
@@ -58,12 +63,15 @@
         placeholder="Instruction step"
         required
       />
-      <button type="button" (click)="removeInstruction(i)" title="Remove">−</button>
+      <button type="button" (click)="removeInstruction(i)" title="Remove">
+        −
+      </button>
     </div>
   </div>
 
-  <button type="button" class="add-btn" (click)="addInstruction()">+ Add Step</button>
+  <button type="button" class="add-btn" (click)="addInstruction()">
+    + Add Step
+  </button>
 
-  
   <button type="submit" class="submit-btn">Save</button>
 </form>

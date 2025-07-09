@@ -5,7 +5,7 @@ import { RecipeService } from '../recipe.service';
 @Component({
   selector: 'app-recipe-form',
   templateUrl: './recipe-form.component.html',
-  styleUrls: ['./recipe-form.component.scss']
+  styleUrls: ['./recipe-form.component.scss'],
 })
 export class RecipeFormComponent implements OnInit {
   title = '';
@@ -18,7 +18,7 @@ export class RecipeFormComponent implements OnInit {
   constructor(
     private recipeService: RecipeService,
     private route: ActivatedRoute,
-    private router: Router
+    private router: Router,
   ) {}
 
   ngOnInit(): void {
@@ -26,7 +26,7 @@ export class RecipeFormComponent implements OnInit {
     this.editing = !!this.recipe_id;
 
     if (this.editing && this.recipe_id) {
-      this.recipeService.getById(this.recipe_id).subscribe(recipe => {
+      this.recipeService.getById(this.recipe_id).subscribe((recipe) => {
         this.title = recipe.title;
         this.ingredients = recipe.ingredients;
         this.instructions = recipe.instructions;
@@ -43,7 +43,6 @@ export class RecipeFormComponent implements OnInit {
     this.ingredients.splice(index, 1);
   }
 
-  
   addInstruction() {
     const nextStep = this.instructions.length + 1;
     this.instructions.push({ step_number: nextStep, text: '' });
@@ -62,7 +61,7 @@ export class RecipeFormComponent implements OnInit {
       this.reindexInstructions();
     }
   }
-  
+
   moveInstructionDown(index: number) {
     if (index < this.instructions.length - 1) {
       const temp = [...this.instructions];
@@ -73,7 +72,7 @@ export class RecipeFormComponent implements OnInit {
   }
 
   reindexInstructions() {
-    this.instructions.forEach((step, i) => step.step_number = i + 1);
+    this.instructions.forEach((step, i) => (step.step_number = i + 1));
   }
 
   submit(): void {
@@ -81,7 +80,7 @@ export class RecipeFormComponent implements OnInit {
       title: this.title,
       ingredients: this.ingredients,
       instructions: this.instructions,
-      is_shareable: this.is_shareable
+      is_shareable: this.is_shareable,
     };
 
     const done = () => this.router.navigate(['/recipes']);
@@ -92,6 +91,4 @@ export class RecipeFormComponent implements OnInit {
       this.recipeService.create(recipeData).subscribe(done);
     }
   }
-
-  
 }

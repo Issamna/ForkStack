@@ -1,11 +1,28 @@
 <nav class="navbar">
   <div class="navbar-content">
     <a routerLink="/" class="brand">ForkStack</a>
-    <a *ngIf="authService.isLoggedIn()" routerLink="/recipes/new" class="add-button" title="Add Recipe">+</a>
+    <a
+      *ngIf="authService.isLoggedIn()"
+      routerLink="/recipes/new"
+      class="add-button"
+      title="Add Recipe"
+      >+</a
+    >
 
     <div class="nav-actions">
-      <a *ngIf="!authService.isLoggedIn()" routerLink="/login" class="login-link">Login</a>
-      <button *ngIf="authService.isLoggedIn()" (click)="logout()" class="logout-button">Logout</button>
+      <a
+        *ngIf="!authService.isLoggedIn()"
+        routerLink="/login"
+        class="login-link"
+        >Login</a
+      >
+      <button
+        *ngIf="authService.isLoggedIn()"
+        (click)="logout()"
+        class="logout-button"
+      >
+        Logout
+      </button>
     </div>
   </div>
 </nav>

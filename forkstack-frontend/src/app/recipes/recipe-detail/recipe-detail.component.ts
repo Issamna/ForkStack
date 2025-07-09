@@ -6,7 +6,7 @@ import { AuthService } from '../../services/auth.service';
 @Component({
   selector: 'app-recipe-detail',
   templateUrl: './recipe-detail.component.html',
-  styleUrls: ['./recipe-detail.component.scss']
+  styleUrls: ['./recipe-detail.component.scss'],
 })
 export class RecipeDetailComponent implements OnInit {
   recipe?: Recipe;
@@ -15,13 +15,13 @@ export class RecipeDetailComponent implements OnInit {
     private route: ActivatedRoute,
     private recipeService: RecipeService,
     private router: Router,
-    private auth: AuthService
+    private auth: AuthService,
   ) {}
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
-      this.recipeService.getById(id).subscribe(data => {
+      this.recipeService.getById(id).subscribe((data) => {
         this.recipe = data;
       });
     }
@@ -41,5 +41,4 @@ export class RecipeDetailComponent implements OnInit {
     const currentUserId = this.auth.getUserId();
     return this.recipe?.owner_id === currentUserId;
   }
-  
 }

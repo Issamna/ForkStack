@@ -1,32 +1,27 @@
 <div *ngIf="recipe; else loading">
-    <h1>{{ recipe.title }}</h1>
-    <div *ngIf="isOwner()">
+  <h1>{{ recipe.title }}</h1>
+  <div *ngIf="isOwner()">
     <button (click)="deleteRecipe()" class="delete-btn">Delete</button>
-    <a
-      [routerLink]="['/recipes', recipe.recipe_id, 'edit']"
-      class="edit-btn"
-    >
+    <a [routerLink]="['/recipes', recipe.recipe_id, 'edit']" class="edit-btn">
       Edit
     </a>
   </div>
 
-  
-    <h3>Ingredients</h3>
-    <ul>
-      <li *ngFor="let ing of recipe.ingredients">
-        {{ ing.quantity }} {{ ing.measurement_type }} - {{ ing.name }}
-      </li>
-    </ul>    
-  
-    <h3>Instructions</h3>
-    <ol>
-      <li *ngFor="let step of recipe.instructions">
-        {{ step.text }}
-      </li>
-    </ol>
+  <h3>Ingredients</h3>
+  <ul>
+    <li *ngFor="let ing of recipe.ingredients">
+      {{ ing.quantity }} {{ ing.measurement_type }} - {{ ing.name }}
+    </li>
+  </ul>
 
+  <h3>Instructions</h3>
+  <ol>
+    <li *ngFor="let step of recipe.instructions">
+      {{ step.text }}
+    </li>
+  </ol>
 </div>
-  
+
 <ng-template #loading>
-    <p>Loading recipe...</p>
+  <p>Loading recipe...</p>
 </ng-template>

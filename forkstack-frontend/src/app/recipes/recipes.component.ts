@@ -4,7 +4,7 @@ import { RecipeService, Recipe } from './recipe.service';
 @Component({
   selector: 'app-recipes',
   templateUrl: './recipes.component.html',
-  styleUrls: ['./recipes.component.scss']
+  styleUrls: ['./recipes.component.scss'],
 })
 export class RecipesComponent implements OnInit {
   recipes: Recipe[] = [];
@@ -19,7 +19,7 @@ export class RecipesComponent implements OnInit {
   }
 
   loadAll(): void {
-    this.recipeService.getAll().subscribe(data => {
+    this.recipeService.getAll().subscribe((data) => {
       this.recipes = data;
       this.updateFiltered();
     });
@@ -31,7 +31,7 @@ export class RecipesComponent implements OnInit {
       return;
     }
 
-    this.recipeService.search(this.search).subscribe(data => {
+    this.recipeService.search(this.search).subscribe((data) => {
       this.recipes = data;
       this.page = 1;
       this.updateFiltered();

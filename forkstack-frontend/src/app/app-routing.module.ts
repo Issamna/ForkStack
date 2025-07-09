@@ -9,13 +9,13 @@ const routes: Routes = [
     path: 'recipes',
     canActivate: [AuthGuard],
     loadChildren: () =>
-      import('./recipes/recipes.module').then(m => m.RecipesModule),
+      import('./recipes/recipes.module').then((m) => m.RecipesModule),
   },
   { path: 'login', component: LoginComponent },
 ];
 
 @NgModule({
   imports: [RouterModule.forRoot(routes)],
-  exports: [RouterModule]
+  exports: [RouterModule],
 })
 export class AppRoutingModule {}

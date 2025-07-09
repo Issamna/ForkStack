@@ -15,10 +15,10 @@ import { RecipeFormComponent } from './recipe-form/recipe-form.component';
       { path: '', component: RecipesComponent },
       { path: 'new', component: RecipeFormComponent },
       { path: ':id', component: RecipeDetailComponent },
-      { path: ':id/edit', component: RecipeFormComponent }, 
+      { path: ':id/edit', component: RecipeFormComponent },
     ]),
     FormsModule,
-    HttpClientModule
-  ]
+    HttpClientModule,
+  ],
 })
 export class RecipesModule {}

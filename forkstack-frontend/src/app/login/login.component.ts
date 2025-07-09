@@ -6,14 +6,17 @@ import { AuthService } from '../services/auth.service';
 @Component({
   selector: 'app-login',
   templateUrl: './login.component.html',
-  styleUrls: ['./login.component.scss']
+  styleUrls: ['./login.component.scss'],
 })
 export class LoginComponent {
   username = '';
   password = '';
   error: string | null = null;
 
-  constructor(private auth: AuthService, private router: Router) {}
+  constructor(
+    private auth: AuthService,
+    private router: Router,
+  ) {}
 
   onSubmit() {
     this.auth.login(this.username, this.password).subscribe({
@@ -21,7 +24,7 @@ export class LoginComponent {
       error: (err) => {
         this.error = 'Login failed. Please check your credentials.';
         console.error(err);
-      }
+      },
     });
   }
 }
