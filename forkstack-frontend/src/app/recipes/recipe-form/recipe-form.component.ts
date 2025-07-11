@@ -14,6 +14,7 @@ export class RecipeFormComponent implements OnInit {
   editing = false;
   recipe_id: string | null = null;
   is_shareable = false;
+  recipeUrl = '';
 
   constructor(
     private recipeService: RecipeService,
@@ -73,6 +74,23 @@ export class RecipeFormComponent implements OnInit {
 
   reindexInstructions() {
     this.instructions.forEach((step, i) => (step.step_number = i + 1));
+  }
+
+  parseRecipeUrl(): void {
+    if (!this.recipeUrl) return;
+
+    this.recipeService.parseUrl(this.recipeUrl).subscribe({
+      next: (data) => {
+        this.title = data.title;
+        this.ingredients = data.ingredients || [{ name: '', quantity: '', measurement_type: '' }];
+        this.instructions = data.instructions || [{ step_number: 1, text: '' }];
+        this.reindexInstructions();
+      },
+      error: (err) => {
+        console.error('Parse failed', err);
+        alert('Failed to parse recipe. Try another URL.');
+      },
+    });
   }
 
   submit(): void {

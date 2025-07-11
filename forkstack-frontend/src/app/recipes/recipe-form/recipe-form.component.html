@@ -1,6 +1,26 @@
 <h2>Add Recipe</h2>
 
 <form (ngSubmit)="submit()">
+  <div class="mb-4">
+    <label for="recipeUrl" class="block font-semibold mb-1">Paste Recipe URL</label>
+    <div class="flex gap-2">
+      <input
+        id="recipeUrl"
+        name="recipeUrl"
+        [(ngModel)]="recipeUrl"
+        class="border px-2 py-1 rounded w-full"
+        placeholder="https://example.com/recipe"
+      />
+      <button
+        type="button"
+        (click)="parseRecipeUrl()"
+        class="bg-blue-600 text-white px-4 py-1 rounded hover:bg-blue-700"
+      >
+        Parse
+      </button>
+    </div>
+  </div>
+  
   <label>Title</label>
   <input [(ngModel)]="title" name="title" required />
   <label>

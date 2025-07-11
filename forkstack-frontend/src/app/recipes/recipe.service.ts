@@ -83,4 +83,16 @@ export class RecipeService {
       headers: this.authHeaders(),
     });
   }
+
+  parseUrl(url: string): Observable<Omit<Recipe, 'recipe_id' | 'owner_id'>> {
+    return this.http.post<Omit<Recipe, 'recipe_id' | 'owner_id'>>(
+      `${this.apiUrl}/parse-url`,
+      { url },
+      {
+        headers: new HttpHeaders({
+          'Content-Type': 'application/json',
+        }),
+      }
+    );
+  }  
 }

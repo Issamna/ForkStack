@@ -6,8 +6,9 @@ from boto3.dynamodb.conditions import Key
 from fastapi import APIRouter, HTTPException, Depends
 from typing import List
 
-from models.recipe import RecipeIn, RecipeOut
 from dependencies import get_current_user
+from models.recipe import RecipeIn, RecipeOut, URLIn
+from utils.parser import recipe_scraper
 
 
 dynamodb = boto3.resource("dynamodb")
@@ -87,3 +88,10 @@ def delete(recipe_id: str, current_user_id: str = Depends(get_current_user)):
 
     table.delete_item(Key={"recipe_id": recipe_id})
     return {"message": "Recipe deleted"}
+
+@router.post("/parse-url")
+def parse_recipe_url(data: URLIn):
+    try:
+        return recipe_scraper(data.url)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to parse recipe: {str(e)}")
