@@ -1,32 +1,43 @@
 <nav class="navbar">
-  <div class="navbar-content">
-    <a routerLink="/" class="brand">ForkStack</a>
-    <a
-      *ngIf="authService.isLoggedIn()"
-      routerLink="/recipes/new"
-      class="add-button"
-      title="Add Recipe"
-      >+</a
-    >
-
-    <div class="nav-actions">
+  <div class="logo-wrapper">
+    <a routerLink="/" class="flex items-center gap-3 transition">
+      <img src="assets/logo.png" alt="Forkstack Icon" class="logo-image" />
+      <span class="logo-text">forkstack</span>
+    </a>
+    <div class="relative group ml-4">
       <a
-        *ngIf="!authService.isLoggedIn()"
-        routerLink="/login"
-        class="login-link"
-        >Login</a
-      >
-      <button
         *ngIf="authService.isLoggedIn()"
-        (click)="logout()"
-        class="logout-button"
+        routerLink="/recipes/new"
+        class="add-button"
       >
-        Logout
-      </button>
+        +
+      </a>
+      <div class="tooltip">Add Recipe</div>
     </div>
+  </div>
+  <div class="absolute right-4 top-4 sm:top-auto sm:static">
+    <button
+      *ngIf="authService.isLoggedIn()"
+      (click)="logout()"
+      class="logout-button"
+    >
+      <svg
+        class="h-6 w-6 sm:hidden"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        viewBox="0 0 24 24"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path d="M17 16l4-4m0 0l-4-4m4 4H7"></path>
+        <path d="M3 12h4"></path>
+      </svg>
+      <span class="hidden sm:inline">Logout</span>
+    </button>
   </div>
 </nav>
 
-<main class="content">
+<main class="p-4">
   <router-outlet></router-outlet>
 </main>

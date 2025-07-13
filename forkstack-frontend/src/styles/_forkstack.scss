@@ -1,0 +1,93 @@
+/* Header-specific additions */
+
+.navbar {
+  @apply bg-background border-b border-gray-200 px-4 py-3 flex items-center justify-between flex-wrap;
+}
+
+.logo-wrapper {
+  @apply flex items-center gap-3 mx-auto;
+}
+
+.logo-image {
+  @apply h-12 w-12 sm:h-12 sm:w-12;
+}
+
+.logo-text {
+  @apply text-textgray font-bold text-3xl sm:text-5xl hover:text-accent;
+}
+
+.add-button {
+  @apply text-textgray font-semibold text-2xl sm:text-4xl hover:text-accent;
+}
+
+.tooltip {
+  @apply absolute left-1/2 -translate-x-1/2 -top-8 bg-textgray text-white text-sm px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition duration-200 whitespace-nowrap z-10;
+}
+
+.logout-button {
+  @apply bg-textgray text-white p-2 sm:px-4 sm:py-2 rounded hover:bg-accent hover:text-textgray font-semibold flex items-center justify-center;
+}
+
+.form-input {
+  @apply border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent;
+}
+
+.button-primary {
+  @apply bg-textgray text-white font-semibold py-2 px-4 rounded hover:bg-accent hover:text-textgray transition text-sm;
+}
+
+.card-box {
+  @apply bg-white rounded shadow-md p-6 w-full max-w-sm;
+}
+
+.page-wrapper {
+  @apply pt-10 pb-16 flex flex-col items-center justify-start min-h-screen px-4;
+}
+
+.heading-primary {
+  @apply text-3xl sm:text-4xl font-bold text-textgray;
+}
+
+.heading-secondary {
+  @apply text-xl font-semibold text-textgray mb-4;
+}
+
+.text-subtle {
+  @apply text-base text-textgray;
+}
+
+/* Recipe search styles */
+
+.search-bar {
+  @apply w-full max-w-md relative;
+}
+
+.search-input {
+  @apply w-full rounded-full border border-gray-300 py-2 pl-4 pr-10 focus:outline-none focus:ring-2 focus:ring-accent text-sm;
+}
+
+.search-icon-button {
+  @apply absolute right-3 top-1/2 -translate-y-1/2 text-textgray hover:text-accent transition h-5 w-5;
+}
+
+.recipe-grid {
+  @apply grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-4 justify-center;
+}
+
+.recipe-tile {
+  @apply bg-white rounded-lg shadow hover:shadow-md transition text-center cursor-pointer overflow-hidden w-full;
+  aspect-ratio: 1 / 1; // This forces square
+  max-width: 300px;
+}
+
+.recipe-image {
+  @apply w-full h-3/4 object-cover bg-gray-100;
+}
+
+.recipe-title {
+  @apply text-sm font-semibold text-textgray mt-2 px-2 truncate;
+}
+
+.pagination-button {
+  @apply px-4 py-2 rounded bg-primary text-white hover:bg-accent hover:text-primary disabled:opacity-40 text-sm;
+}

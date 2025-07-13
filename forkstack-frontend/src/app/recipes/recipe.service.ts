@@ -92,7 +92,7 @@ export class RecipeService {
         headers: new HttpHeaders({
           'Content-Type': 'application/json',
         }),
-      }
+      },
     );
-  }  
+  }
 }

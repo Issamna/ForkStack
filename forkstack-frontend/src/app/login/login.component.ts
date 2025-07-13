@@ -23,7 +23,6 @@ export class LoginComponent {
       next: () => this.router.navigate(['/recipes']),
       error: (err) => {
         this.error = 'Login failed. Please check your credentials.';
-        console.error(err);
       },
     });
   }

@@ -16,6 +16,10 @@ export class RecipeFormComponent implements OnInit {
   is_shareable = false;
   recipeUrl = '';
 
+  // ✨ NEW
+  showParser = false;
+  isParsing = false;
+
   constructor(
     private recipeService: RecipeService,
     private route: ActivatedRoute,
@@ -76,19 +80,27 @@ export class RecipeFormComponent implements OnInit {
     this.instructions.forEach((step, i) => (step.step_number = i + 1));
   }
 
+  // 🔄 Updated to support modal & loading
   parseRecipeUrl(): void {
     if (!this.recipeUrl) return;
+
+    this.isParsing = true;
 
     this.recipeService.parseUrl(this.recipeUrl).subscribe({
       next: (data) => {
         this.title = data.title;
-        this.ingredients = data.ingredients || [{ name: '', quantity: '', measurement_type: '' }];
+        this.ingredients = data.ingredients || [
+          { name: '', quantity: '', measurement_type: '' },
+        ];
         this.instructions = data.instructions || [{ step_number: 1, text: '' }];
         this.reindexInstructions();
+        this.isParsing = false;
+        this.showParser = false;
       },
       error: (err) => {
         console.error('Parse failed', err);
         alert('Failed to parse recipe. Try another URL.');
+        this.isParsing = false;
       },
     });
   }

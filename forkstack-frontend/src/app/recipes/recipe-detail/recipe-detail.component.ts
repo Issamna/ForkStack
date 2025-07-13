@@ -10,6 +10,7 @@ import { AuthService } from '../../services/auth.service';
 })
 export class RecipeDetailComponent implements OnInit {
   recipe?: Recipe;
+  showConfirm = false;
 
   constructor(
     private route: ActivatedRoute,
@@ -28,13 +29,14 @@ export class RecipeDetailComponent implements OnInit {
   }
 
   deleteRecipe(): void {
+    this.showConfirm = true;
+  }
+
+  confirmDelete(): void {
     if (!this.recipe) return;
-    const confirmed = confirm(`Delete "${this.recipe.title}"?`);
-    if (confirmed) {
-      this.recipeService.delete(this.recipe.recipe_id).subscribe(() => {
-        this.router.navigate(['/recipes']);
-      });
-    }
+    this.recipeService.delete(this.recipe.recipe_id).subscribe(() => {
+      this.router.navigate(['/recipes']);
+    });
   }
 
   isOwner(): boolean {

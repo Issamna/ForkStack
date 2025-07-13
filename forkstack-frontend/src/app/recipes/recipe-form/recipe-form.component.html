@@ -1,97 +1,180 @@
-<h2>Add Recipe</h2>
+<div class="max-w-4xl mx-auto px-4 py-8">
+  <!-- Title Row: Input + Import + Share -->
+  <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+    <input
+      [(ngModel)]="title"
+      name="title"
+      required
+      placeholder="Recipe Title"
+      class="border border-gray-300 rounded px-3 py-2 w-full sm:flex-1 focus:outline-none focus:ring-2 focus:ring-accent"
+    />
 
-<form (ngSubmit)="submit()">
-  <div class="mb-4">
-    <label for="recipeUrl" class="block font-semibold mb-1">Paste Recipe URL</label>
-    <div class="flex gap-2">
+    <div class="flex gap-2 sm:ml-auto w-full sm:w-auto">
+      <!-- Import Button -->
+      <button
+        (click)="showParser = true"
+        class="bg-accent text-white px-4 py-2 rounded hover:bg-primary hover:text-white w-full sm:w-auto"
+      >
+        Import
+      </button>
+
+      <!-- Share Toggle -->
+      <button
+        (click)="is_shareable = !is_shareable"
+        [ngClass]="
+          is_shareable ? 'bg-primary text-white' : 'bg-gray-300 text-textgray'
+        "
+        class="px-4 py-2 rounded hover:opacity-90 transition w-full sm:w-auto"
+      >
+        {{ is_shareable ? "Share ✅" : "Share ❌" }}
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Layout -->
+  <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+    <!-- Ingredients Section -->
+    <div class="md:col-span-2 order-2 md:order-1">
+      <!-- Ingredients -->
+      <h2 class="text-xl font-semibold text-textgray mb-2">Ingredients</h2>
+      <div class="flex flex-col gap-2">
+        <div
+          class="grid grid-cols-8 gap-2 items-center"
+          *ngFor="let ing of ingredients; let i = index"
+        >
+          <!-- Quantity: 2/8 -->
+          <input
+            [(ngModel)]="ing.quantity"
+            name="qty-{{ i }}"
+            placeholder="Qty"
+            class="col-span-1 border px-2 py-1 rounded w-full"
+          />
+
+          <!-- Unit: 2/8 -->
+          <input
+            [(ngModel)]="ing.measurement_type"
+            name="unit-{{ i }}"
+            placeholder="Unit"
+            class="col-span-2 border px-2 py-1 rounded w-full"
+          />
+
+          <!-- Ingredient name: 4/8 -->
+          <div class="col-span-5 flex gap-2">
+            <input
+              [(ngModel)]="ing.name"
+              name="name-{{ i }}"
+              placeholder="Ingredient"
+              class="border px-2 py-1 rounded w-full"
+            />
+            <button
+              type="button"
+              (click)="removeIngredient(i)"
+              title="Remove"
+              class="bg-red-200 hover:bg-red-300 text-red-800 px-2 rounded font-bold"
+            >
+              −
+            </button>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          (click)="addIngredient()"
+          class="text-accent font-bold mt-2"
+        >
+          + Add Ingredient
+        </button>
+      </div>
+    </div>
+
+    <!-- Image Preview -->
+    <div
+      class="order-1 md:order-2 w-full md:w-auto aspect-square max-w-xs self-start"
+    >
+      <img
+        src="https://picsum.photos/seed/recipe/400/400"
+        alt="Recipe image"
+        class="rounded-lg shadow-md w-full h-full object-cover"
+      />
+    </div>
+
+    <!-- Instructions Section -->
+    <div class="md:col-span-3 order-3">
+      <h2 class="text-xl font-semibold text-textgray mt-6 mb-2">
+        Instructions
+      </h2>
+      <div class="flex flex-col gap-3">
+        <div
+          class="flex gap-2 items-start"
+          *ngFor="let step of instructions; let i = index"
+        >
+          <span class="font-bold mt-2">{{ i + 1 }}.</span>
+          <textarea
+            [(ngModel)]="step.text"
+            name="step-{{ i }}"
+            placeholder="Instruction step"
+            required
+            rows="3"
+            class="border px-3 py-2 rounded w-full resize-y min-h-[5rem] focus:outline-none focus:ring-2 focus:ring-accent"
+          ></textarea>
+          <button
+            type="button"
+            (click)="removeInstruction(i)"
+            title="Remove"
+            class="bg-red-200 hover:bg-red-300 text-red-800 px-2 rounded font-bold mt-2"
+          >
+            −
+          </button>
+        </div>
+        <button
+          type="button"
+          (click)="addInstruction()"
+          class="text-accent font-bold"
+        >
+          + Add Step
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Submit -->
+  <div class="mt-8 text-center">
+    <button
+      type="submit"
+      (click)="submit()"
+      class="bg-textgray text-white px-6 py-3 rounded hover:bg-accent hover:text-textgray transition"
+    >
+      Save Recipe
+    </button>
+  </div>
+
+  <!-- Parser Modal -->
+  <div
+    *ngIf="showParser"
+    class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50"
+  >
+    <div class="bg-white rounded-lg p-6 w-full max-w-md">
+      <h3 class="text-lg font-semibold text-textgray mb-4">Import Recipe</h3>
       <input
-        id="recipeUrl"
-        name="recipeUrl"
         [(ngModel)]="recipeUrl"
-        class="border px-2 py-1 rounded w-full"
-        placeholder="https://example.com/recipe"
+        placeholder="Paste recipe URL"
+        class="border px-3 py-2 rounded w-full mb-4"
       />
-      <button
-        type="button"
-        (click)="parseRecipeUrl()"
-        class="bg-blue-600 text-white px-4 py-1 rounded hover:bg-blue-700"
-      >
-        Parse
-      </button>
+      <div class="flex justify-end gap-2">
+        <button
+          (click)="showParser = false"
+          class="text-textgray px-4 py-2 rounded hover:bg-gray-100"
+        >
+          Cancel
+        </button>
+        <button
+          (click)="parseRecipeUrl()"
+          [disabled]="isParsing"
+          class="bg-accent text-white px-4 py-2 rounded hover:bg-primary"
+        >
+          {{ isParsing ? "Importing..." : "Import" }}
+        </button>
+      </div>
     </div>
   </div>
-  
-  <label>Title</label>
-  <input [(ngModel)]="title" name="title" required />
-  <label>
-    <input type="checkbox" [(ngModel)]="is_shareable" name="is_shareable" />
-    Share this recipe publicly
-  </label>
-
-  <label>Ingredients</label>
-  <div class="ingredients">
-    <div
-      class="ingredient-group"
-      *ngFor="let ing of ingredients; let i = index"
-    >
-      <input
-        [(ngModel)]="ing.name"
-        name="name-{{ i }}"
-        placeholder="Name"
-        required
-        class="name"
-      />
-      <input
-        [(ngModel)]="ing.quantity"
-        name="qty-{{ i }}"
-        placeholder="Qty"
-        required
-        class="qty"
-      />
-      <input
-        [(ngModel)]="ing.measurement_type"
-        name="measure-{{ i }}"
-        placeholder="Unit"
-        required
-        class="unit"
-      />
-      <button
-        type="button"
-        class="circle-btn"
-        (click)="removeIngredient(i)"
-        title="Remove"
-      >
-        &minus;
-      </button>
-    </div>
-  </div>
-
-  <button type="button" class="circle-btn add-btn" (click)="addIngredient()">
-    +
-  </button>
-
-  <label>Instructions</label>
-  <div class="instructions">
-    <div
-      class="instruction-group"
-      *ngFor="let step of instructions; let i = index"
-    >
-      <span class="step-number">{{ i + 1 }}.</span>
-      <input
-        [(ngModel)]="step.text"
-        name="step-{{ i }}"
-        placeholder="Instruction step"
-        required
-      />
-      <button type="button" (click)="removeInstruction(i)" title="Remove">
-        −
-      </button>
-    </div>
-  </div>
-
-  <button type="button" class="add-btn" (click)="addInstruction()">
-    + Add Step
-  </button>
-
-  <button type="submit" class="submit-btn">Save</button>
-</form>
+</div>

@@ -1,20 +1,31 @@
-<div class="login-container">
-  <h2>Login</h2>
-  <form (ngSubmit)="onSubmit()">
-    <input
-      [(ngModel)]="username"
-      name="username"
-      placeholder="Username"
-      required
-    />
-    <input
-      [(ngModel)]="password"
-      name="password"
-      type="password"
-      placeholder="Password"
-      required
-    />
-    <button type="submit">Login</button>
-  </form>
-  <div class="error" *ngIf="error">{{ error }}</div>
+<div class="page-wrapper">
+  <div class="text-center mb-8">
+    <h1 class="heading-primary">Welcome</h1>
+    <p class="mt-2 text-subtle">Save and share your recipes repos</p>
+  </div>
+
+  <div class="card-box">
+    <h2 class="heading-secondary">Login</h2>
+    <form (ngSubmit)="onSubmit()" class="flex flex-col space-y-4">
+      <input
+        [(ngModel)]="username"
+        name="username"
+        placeholder="Username"
+        required
+        class="form-input"
+      />
+      <input
+        [(ngModel)]="password"
+        name="password"
+        type="password"
+        placeholder="Password"
+        required
+        class="form-input"
+      />
+      <button type="submit" class="button-primary">Login</button>
+    </form>
+    <div *ngIf="error" class="mt-4 text-red-600 text-sm text-center">
+      {{ error }}
+    </div>
+  </div>
 </div>

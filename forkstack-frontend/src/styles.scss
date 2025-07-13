@@ -1,1 +1,8 @@
-/* You can add global styles to this file, and also import other style files */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import "./styles/forkstack";
+body {
+  @apply bg-background text-textgray font-sans m-0;
+}
