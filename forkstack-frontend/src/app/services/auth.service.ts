@@ -14,10 +14,15 @@ export class AuthService {
     private router: Router,
   ) {}
 
-  login(username: string, password: string): Observable<any> {
+  login(
+    username: string,
+    password: string,
+    remember: boolean,
+  ): Observable<any> {
     const body = new URLSearchParams();
     body.set('username', username);
     body.set('password', password);
+    body.set('remember_me', remember ? 'true' : 'false');
 
     return this.http
       .post(`${this.apiUrl}/login`, body.toString(), {
@@ -30,9 +35,21 @@ export class AuthService {
       );
   }
 
-  logout(): void {
+  register(data: {
+    username: string;
+    email: string;
+    password: string;
+    captcha_token: string;
+  }): Observable<any> {
+    return this.http.post(`${this.apiUrl}`, data);
+  }
+
+  logout(expired = false): void {
     localStorage.removeItem('access_token');
-    this.router.navigate(['/login']);
+    this.router.navigate(
+      ['/login'],
+      expired ? { queryParams: { expired: '1' } } : undefined,
+    );
   }
 
   isLoggedIn(): boolean {
@@ -41,6 +58,20 @@ export class AuthService {
 
   getToken(): string | null {
     return localStorage.getItem('access_token');
+  }
+
+  isTokenExpired(): boolean {
+    const token = this.getToken();
+    if (!token) return true;
+
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const exp = payload.exp;
+      const now = Math.floor(Date.now() / 1000);
+      return exp < now;
+    } catch {
+      return true;
+    }
   }
 
   getUserId(): string | null {

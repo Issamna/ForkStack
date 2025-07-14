@@ -9,6 +9,7 @@
     <form (ngSubmit)="onSubmit()" class="flex flex-col space-y-4">
       <input
         [(ngModel)]="username"
+        (input)="onInputChange()"
         name="username"
         placeholder="Username"
         required
@@ -16,13 +17,29 @@
       />
       <input
         [(ngModel)]="password"
+        (input)="onInputChange()"
         name="password"
         type="password"
         placeholder="Password"
         required
         class="form-input"
       />
+      <label class="flex items-center gap-2 text-sm text-subtle">
+        <input type="checkbox" [(ngModel)]="rememberMe" name="rememberMe" />
+        Stay logged in
+      </label>
       <button type="submit" class="button-primary">Login</button>
+      <p class="mt-4 text-sm text-center">
+        <a routerLink="/forgot-password" class="text-accent hover:underline">
+          Forgot your password?
+        </a>
+      </p>
+      <p class="mt-6 text-sm text-center text-subtle">
+        Don't have an account?
+        <a routerLink="/register" class="text-accent hover:underline"
+          >Create one</a
+        >
+      </p>
     </form>
     <div *ngIf="error" class="mt-4 text-red-600 text-sm text-center">
       {{ error }}

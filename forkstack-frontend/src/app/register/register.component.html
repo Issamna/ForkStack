@@ -1,0 +1,52 @@
+<div class="page-wrapper">
+  <div class="text-center mb-8">
+    <h1 class="heading-primary">Welcome</h1>
+    <p class="mt-2 text-subtle">Create your recipe account</p>
+  </div>
+
+  <div class="card-box">
+    <h2 class="heading-secondary">Register</h2>
+    <form
+      [formGroup]="registerForm"
+      (ngSubmit)="onSubmit()"
+      class="flex flex-col space-y-4"
+    >
+      <input
+        formControlName="username"
+        placeholder="Username"
+        class="form-input"
+        required
+      />
+      <input
+        formControlName="email"
+        placeholder="Email"
+        class="form-input"
+        required
+      />
+      <input
+        formControlName="password"
+        type="password"
+        placeholder="Password"
+        class="form-input"
+        required
+      />
+      <button
+        type="submit"
+        class="button-primary disabled:opacity-50 disabled:cursor-not-allowed"
+        [disabled]="submitting || registerForm.invalid"
+      >
+        {{ submitting ? "Registering..." : "Register" }}
+      </button>
+    </form>
+    <div
+      *ngIf="successMessage"
+      class="mt-4 px-4 py-2 bg-green-100 text-green-800 text-sm rounded text-center shadow"
+    >
+      {{ successMessage }}
+    </div>
+
+    <div *ngIf="errorMessage" class="mt-4 text-red-600 text-sm text-center">
+      {{ errorMessage }}
+    </div>
+  </div>
+</div>

@@ -12,7 +12,7 @@ logger.setLevel(logging.INFO)
 
 if not logger.handlers:
     handler = logging.StreamHandler(sys.stdout)
-    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
     handler.setFormatter(formatter)
     logger.addHandler(handler)
 
@@ -20,9 +20,11 @@ app = FastAPI(debug=True)
 app.include_router(recipe_service.router, prefix="/recipes", tags=["recipes"])
 app.include_router(user_service.router, prefix="/users", tags=["users"])
 
+
 @app.get("/openapi.json")
 def get_openapi():
     return app.openapi()
+
 
 app.add_middleware(
     CORSMiddleware,

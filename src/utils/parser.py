@@ -5,9 +5,30 @@ import requests
 import re
 
 MEASURE_UNITS = [
-    "tsp", "tbsp", "cup", "cups", "oz", "ounce", "ounces", "lb", "pound", "pounds",
-    "ml", "l", "g", "gram", "grams", "kg", "pinch", "dash", "clove", "cloves", "can", "cans"
+    "tsp",
+    "tbsp",
+    "cup",
+    "cups",
+    "oz",
+    "ounce",
+    "ounces",
+    "lb",
+    "pound",
+    "pounds",
+    "ml",
+    "l",
+    "g",
+    "gram",
+    "grams",
+    "kg",
+    "pinch",
+    "dash",
+    "clove",
+    "cloves",
+    "can",
+    "cans",
 ]
+
 
 def parse_ingredient(text: str):
     match = re.match(r"^(\d+[\/\d\s\.]*)\s*([a-zA-Z]+)?\s*(.*)", text.strip())
@@ -19,13 +40,10 @@ def parse_ingredient(text: str):
         return {
             "name": name.strip(),
             "quantity": quantity.strip(),
-            "measurement_type": unit.lower() if unit else ""
+            "measurement_type": unit.lower() if unit else "",
         }
-    return {
-        "name": text.strip(),
-        "quantity": "",
-        "measurement_type": ""
-    }
+    return {"name": text.strip(), "quantity": "", "measurement_type": ""}
+
 
 def recipe_scraper(url: str):
     try:
@@ -40,10 +58,11 @@ def recipe_scraper(url: str):
                 {"step_number": i + 1, "text": step.strip()}
                 for i, step in enumerate(instructions_text.split("\n"))
                 if step.strip()
-            ]
+            ],
         }
     except WebsiteNotImplementedError:
         return bs4_scraper(url)
+
 
 def bs4_scraper(url: str):
     try:
@@ -57,9 +76,7 @@ def bs4_scraper(url: str):
         ]
 
         instructions_raw = [
-            p.get_text(strip=True)
-            for p in soup.select("p")
-            if len(p.text.strip()) > 50
+            p.get_text(strip=True) for p in soup.select("p") if len(p.text.strip()) > 50
         ]
 
         return {
@@ -68,7 +85,7 @@ def bs4_scraper(url: str):
             "instructions": [
                 {"step_number": i + 1, "text": step}
                 for i, step in enumerate(instructions_raw[:10])
-            ]
+            ],
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Fallback parser failed: {str(e)}")

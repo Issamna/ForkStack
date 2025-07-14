@@ -1,4 +1,3 @@
-
 from fastapi.testclient import TestClient
 from unittest.mock import patch
 from api import app
@@ -8,8 +7,9 @@ client = TestClient(app)
 sample_recipe = {
     "title": "Grilled Cheese",
     "ingredients": [{"name": "cheese", "quantity": "2 slices"}],
-    "instructions": "Toast bread. Add cheese. Grill."
+    "instructions": "Toast bread. Add cheese. Grill.",
 }
+
 
 @patch("services.recipe_service.table")
 class TestRecipeAPI:
