@@ -15,10 +15,9 @@ export class RecipeFormComponent implements OnInit {
   recipe_id: string | null = null;
   is_shareable = false;
   recipeUrl = '';
-
-  // ✨ NEW
   showParser = false;
   isParsing = false;
+  parseError: string | null = null;
 
   constructor(
     private recipeService: RecipeService,
@@ -36,6 +35,7 @@ export class RecipeFormComponent implements OnInit {
         this.ingredients = recipe.ingredients;
         this.instructions = recipe.instructions;
         this.is_shareable = recipe.is_shareable;
+        this.recipeUrl = recipe.import_source_url || '';
       });
     }
   }
@@ -80,11 +80,10 @@ export class RecipeFormComponent implements OnInit {
     this.instructions.forEach((step, i) => (step.step_number = i + 1));
   }
 
-  // 🔄 Updated to support modal & loading
   parseRecipeUrl(): void {
     if (!this.recipeUrl) return;
-
     this.isParsing = true;
+    this.parseError = null;
 
     this.recipeService.parseUrl(this.recipeUrl).subscribe({
       next: (data) => {
@@ -99,19 +98,23 @@ export class RecipeFormComponent implements OnInit {
       },
       error: (err) => {
         console.error('Parse failed', err);
-        alert('Failed to parse recipe. Try another URL.');
+        this.parseError = 'Failed to parse recipe. Try another URL.';
         this.isParsing = false;
       },
     });
   }
 
   submit(): void {
-    const recipeData = {
+    const recipeData: any = {
       title: this.title,
       ingredients: this.ingredients,
       instructions: this.instructions,
       is_shareable: this.is_shareable,
     };
+
+    if (!this.editing && this.recipeUrl.trim()) {
+      recipeData.import_source_url = this.recipeUrl.trim();
+    }
 
     const done = () => this.router.navigate(['/recipes']);
 

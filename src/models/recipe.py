@@ -1,4 +1,5 @@
-from pydantic import BaseModel
+import re
+from pydantic import BaseModel, field_validator
 from typing import List, Optional
 
 
@@ -18,11 +19,18 @@ class RecipeIn(BaseModel):
     ingredients: List[Ingredient]
     instructions: List[InstructionStep]
     is_shareable: bool = False
+    owner_id: Optional[str] = None
+    import_source_url: Optional[str] = None
+
+    @field_validator("import_source_url")
+    def validate_url(cls, v):
+        if v and not re.match(r"^https?://", v):
+            raise ValueError("URL must start with http:// or https://")
+        return v
 
 
 class RecipeOut(RecipeIn):
     recipe_id: str
-    owner_id: str
 
 
 class URLIn(BaseModel):

@@ -21,6 +21,7 @@ export interface Recipe {
   instructions: InstructionStep[];
   is_shareable: boolean;
   owner_id?: string;
+  import_source_url?: string;
 }
 
 @Injectable({

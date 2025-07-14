@@ -27,6 +27,7 @@ def create(recipe: RecipeIn, current_user_id: str = Depends(get_current_user)):
         "instructions": [s.dict() for s in recipe.instructions],
         "is_shareable": recipe.is_shareable,
         "owner_id": current_user_id,
+        "import_source_url": recipe.import_source_url,
     }
     table.put_item(Item=item)
     return item
