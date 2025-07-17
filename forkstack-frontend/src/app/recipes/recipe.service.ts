@@ -22,6 +22,7 @@ export interface Recipe {
   is_shareable: boolean;
   owner_id?: string;
   import_source_url?: string;
+  recipe_tags?: string[];
 }
 
 @Injectable({
@@ -93,6 +94,15 @@ export class RecipeService {
         headers: new HttpHeaders({
           'Content-Type': 'application/json',
         }),
+      },
+    );
+  }
+
+  getTags(): Observable<{ id: string; name: string }[]> {
+    return this.http.get<{ id: string; name: string }[]>(
+      'https://e6q9keyixh.execute-api.us-east-1.amazonaws.com/prod/tags',
+      {
+        headers: this.authHeaders(),
       },
     );
   }

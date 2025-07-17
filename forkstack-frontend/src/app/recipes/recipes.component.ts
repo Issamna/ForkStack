@@ -1,5 +1,10 @@
 import { Component, OnInit } from '@angular/core';
 import { RecipeService, Recipe } from './recipe.service';
+import { ImageHelperService } from '../services/image-helper.service';
+
+interface RecipeWithImage extends Recipe {
+  imageSrc: string;
+}
 
 @Component({
   selector: 'app-recipes',
@@ -7,12 +12,15 @@ import { RecipeService, Recipe } from './recipe.service';
   styleUrls: ['./recipes.component.scss'],
 })
 export class RecipesComponent implements OnInit {
-  recipes: Recipe[] = [];
-  filtered: Recipe[] = [];
+  recipes: RecipeWithImage[] = [];
+  filtered: RecipeWithImage[] = [];
   page = 1;
   search = '';
 
-  constructor(private recipeService: RecipeService) {}
+  constructor(
+    private recipeService: RecipeService,
+    public imageHelper: ImageHelperService,
+  ) {}
 
   ngOnInit(): void {
     this.loadAll();
@@ -20,7 +28,10 @@ export class RecipesComponent implements OnInit {
 
   loadAll(): void {
     this.recipeService.getAll().subscribe((data) => {
-      this.recipes = data;
+      this.recipes = data.map((recipe) => ({
+        ...recipe,
+        imageSrc: this.imageHelper.getImageForTags(recipe.recipe_tags),
+      }));
       this.updateFiltered();
     });
   }
@@ -32,7 +43,10 @@ export class RecipesComponent implements OnInit {
     }
 
     this.recipeService.search(this.search).subscribe((data) => {
-      this.recipes = data;
+      this.recipes = data.map((recipe) => ({
+        ...recipe,
+        imageSrc: this.imageHelper.getImageForTags(recipe.recipe_tags),
+      }));
       this.page = 1;
       this.updateFiltered();
     });

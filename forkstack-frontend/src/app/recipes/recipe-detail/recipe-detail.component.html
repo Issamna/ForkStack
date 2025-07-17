@@ -3,12 +3,12 @@
   class="max-w-4xl mx-auto px-4 py-8 text-textgray"
 >
   <!-- Header -->
-  <div class="flex items-center justify-between flex-wrap mb-6 gap-2">
+  <div class="flex items-center justify-between flex-wrap mb-1 gap-2">
     <div class="flex items-center gap-3">
       <h1 class="text-3xl sm:text-4xl font-bold break-words">
         {{ recipe.title }}
       </h1>
-      <div *ngIf="isOwner()" class="flex gap-2">
+      <div *ngIf="isOwner()" class="flex gap-2 mb-1">
         <a
           *ngIf="recipe.import_source_url"
           [href]="recipe.import_source_url"
@@ -64,12 +64,20 @@
       </div>
     </div>
   </div>
+  <div *ngIf="recipe.recipe_tags?.length" class="flex flex-wrap gap-2 mb-4">
+    <span
+      *ngFor="let tag of recipe.recipe_tags"
+      class="text-sm border px-2 py-1 rounded"
+    >
+      {{ tag }}
+    </span>
+  </div>
 
   <!-- Image (always under title on small screens) -->
   <div class="w-full max-w-xs mx-auto sm:hidden mb-6">
     <div class="aspect-square rounded overflow-hidden shadow">
       <img
-        src="https://picsum.photos/seed/recipe/400/400"
+        [src]="imageHelper.getImageForTags(recipe?.recipe_tags)"
         alt="Recipe image"
         class="w-full h-full object-cover"
       />
@@ -91,7 +99,7 @@
       class="hidden sm:block w-full max-w-xs aspect-square rounded overflow-hidden shadow"
     >
       <img
-        src="https://picsum.photos/seed/recipe/400/400"
+        [src]="imageHelper.getImageForTags(recipe?.recipe_tags)"
         alt="Recipe image"
         class="w-full h-full object-cover"
       />

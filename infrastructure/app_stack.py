@@ -9,20 +9,34 @@ from aws_cdk import (
 from constructs import Construct
 from pathlib import Path
 
+
 class AppStack(Stack):
     def __init__(self, scope: Construct, id: str, **kwargs):
         super().__init__(scope, id, **kwargs)
 
         user_table = dynamodb.Table(
-            self, "UserTable",
-            partition_key=dynamodb.Attribute(name="user_id", type=dynamodb.AttributeType.STRING),
+            self,
+            "UserTable",
+            partition_key=dynamodb.Attribute(
+                name="user_id", type=dynamodb.AttributeType.STRING
+            ),
             table_name="UserTable",
-            removal_policy=RemovalPolicy.DESTROY
+            removal_policy=RemovalPolicy.DESTROY,
         )
 
         recipe_table = dynamodb.Table(
-            self, "RecipeTable",
-            partition_key=dynamodb.Attribute(name="recipe_id", type=dynamodb.AttributeType.STRING),
+            self,
+            "RecipeTable",
+            partition_key=dynamodb.Attribute(
+                name="recipe_id", type=dynamodb.AttributeType.STRING
+            ),
+        )
+        recipe_tag_table = dynamodb.Table(
+            self,
+            "RecipeTagTable",
+            partition_key=dynamodb.Attribute(
+                name="id", type=dynamodb.AttributeType.STRING
+            ),
         )
 
         entry = Path(__file__).resolve().parent.parent / "src"
@@ -37,11 +51,13 @@ class AppStack(Stack):
             environment={
                 "RECIPE_TABLE": recipe_table.table_name,
                 "USER_TABLE": user_table.table_name,
+                "RECIPE_TAG_TABLE": recipe_tag_table.table_name,
             },
         )
 
         recipe_table.grant_read_write_data(lambda_fn)
         user_table.grant_read_write_data(lambda_fn)
+        recipe_tag_table.grant_read_write_data(lambda_fn)
 
         apigw = apigateway.LambdaRestApi(
             self,

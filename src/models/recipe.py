@@ -21,6 +21,7 @@ class RecipeIn(BaseModel):
     is_shareable: bool = False
     owner_id: Optional[str] = None
     import_source_url: Optional[str] = None
+    recipe_tags: Optional[list[str]] = []
 
     @field_validator("import_source_url")
     def validate_url(cls, v):
@@ -35,3 +36,8 @@ class RecipeOut(RecipeIn):
 
 class URLIn(BaseModel):
     url: str
+
+
+class RecipeTag(BaseModel):
+    id: Optional[str] = None
+    name: str

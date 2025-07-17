@@ -18,6 +18,10 @@ export class RecipeFormComponent implements OnInit {
   showParser = false;
   isParsing = false;
   parseError: string | null = null;
+  recipe_tags: string[] = [];
+  availableTags: { id: string; name: string }[] = [];
+  showTagDropdown = false;
+  tagSearch = '';
 
   constructor(
     private recipeService: RecipeService,
@@ -29,15 +33,21 @@ export class RecipeFormComponent implements OnInit {
     this.recipe_id = this.route.snapshot.paramMap.get('id');
     this.editing = !!this.recipe_id;
 
-    if (this.editing && this.recipe_id) {
-      this.recipeService.getById(this.recipe_id).subscribe((recipe) => {
-        this.title = recipe.title;
-        this.ingredients = recipe.ingredients;
-        this.instructions = recipe.instructions;
-        this.is_shareable = recipe.is_shareable;
-        this.recipeUrl = recipe.import_source_url || '';
-      });
-    }
+    this.recipeService.getTags().subscribe((tags) => {
+      this.availableTags = tags;
+
+      // If editing, patch recipe_tags
+      if (this.editing && this.recipe_id) {
+        this.recipeService.getById(this.recipe_id).subscribe((recipe) => {
+          this.title = recipe.title;
+          this.ingredients = recipe.ingredients;
+          this.instructions = recipe.instructions;
+          this.is_shareable = recipe.is_shareable;
+          this.recipeUrl = recipe.import_source_url || '';
+          this.recipe_tags = recipe.recipe_tags || [];
+        });
+      }
+    });
   }
 
   addIngredient() {
@@ -110,6 +120,7 @@ export class RecipeFormComponent implements OnInit {
       ingredients: this.ingredients,
       instructions: this.instructions,
       is_shareable: this.is_shareable,
+      recipe_tags: this.recipe_tags,
     };
 
     if (!this.editing && this.recipeUrl.trim()) {
@@ -123,5 +134,27 @@ export class RecipeFormComponent implements OnInit {
     } else {
       this.recipeService.create(recipeData).subscribe(done);
     }
+  }
+
+  onTagToggle(tagName: string, isChecked: boolean) {
+    if (isChecked && !this.recipe_tags.includes(tagName)) {
+      if (this.recipe_tags.length < 5) {
+        this.recipe_tags.push(tagName);
+      }
+    } else {
+      this.recipe_tags = this.recipe_tags.filter((tag) => tag !== tagName);
+    }
+  }
+
+  toggleTagDropdown() {
+    this.showTagDropdown = !this.showTagDropdown;
+    this.tagSearch = '';
+  }
+
+  filteredTags(): { id: string; name: string }[] {
+    const search = this.tagSearch.toLowerCase();
+    return this.availableTags.filter((tag) =>
+      tag.name.toLowerCase().includes(search),
+    );
   }
 }

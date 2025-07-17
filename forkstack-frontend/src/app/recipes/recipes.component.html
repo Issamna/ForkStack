@@ -45,7 +45,7 @@
       class="bg-white rounded-lg shadow hover:shadow-md overflow-hidden cursor-pointer aspect-square"
     >
       <img
-        src="https://picsum.photos/id/237/200/300"
+        [src]="recipe.imageSrc"
         alt="Recipe image"
         class="w-full h-2/3 sm:h-4/5 object-cover"
       />
@@ -53,7 +53,14 @@
         <h3 class="text-xs sm:text-sm font-semibold text-textgray break-words">
           {{ recipe.title }}
         </h3>
-        <p class="sm:block text-xs text-gray-500 mt-1">30 min | Pasta</p>
+
+        <p
+          class="text-xs text-gray-500 mt-1 truncate w-full text-center"
+          *ngIf="recipe.recipe_tags?.length"
+          [title]="recipe.recipe_tags?.join(' | ') || ''"
+        >
+          {{ recipe.recipe_tags?.join(" | ") || "" }}
+        </p>
       </div>
     </div>
   </div>

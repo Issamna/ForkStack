@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { RecipeService, Recipe } from '../recipe.service';
 import { AuthService } from '../../services/auth.service';
+import { ImageHelperService } from '../../services/image-helper.service';
 
 @Component({
   selector: 'app-recipe-detail',
@@ -17,6 +18,7 @@ export class RecipeDetailComponent implements OnInit {
     private recipeService: RecipeService,
     private router: Router,
     private auth: AuthService,
+    public imageHelper: ImageHelperService,
   ) {}
 
   ngOnInit(): void {
