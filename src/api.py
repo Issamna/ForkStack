@@ -5,7 +5,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from mangum import Mangum
 
-from services import recipe_service, user_service, tag_service
+from services import (
+    recipe_service, 
+    user_service, 
+    tag_service,
+    ingredient_service
+)
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -20,6 +25,7 @@ app = FastAPI(debug=True)
 app.include_router(recipe_service.router, prefix="/recipes", tags=["recipes"])
 app.include_router(user_service.router, prefix="/users", tags=["users"])
 app.include_router(tag_service.router, prefix="/tags", tags=["tags"])
+app.include_router(ingredient_service.router, prefix="/ingredients", tags=["ingredients"])
 
 
 @app.get("/openapi.json")

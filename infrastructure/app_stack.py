@@ -38,6 +38,14 @@ class AppStack(Stack):
                 name="id", type=dynamodb.AttributeType.STRING
             ),
         )
+        ingredient_table = dynamodb.Table(
+            self,
+            "IngredientTable",
+            partition_key=dynamodb.Attribute(
+                name="ingredient_id", type=dynamodb.AttributeType.STRING
+            ),
+            removal_policy=RemovalPolicy.RETAIN,
+        )
 
         entry = Path(__file__).resolve().parent.parent / "src"
 
@@ -52,12 +60,14 @@ class AppStack(Stack):
                 "RECIPE_TABLE": recipe_table.table_name,
                 "USER_TABLE": user_table.table_name,
                 "RECIPE_TAG_TABLE": recipe_tag_table.table_name,
+                "INGREDIENT_TABLE": ingredient_table.table_name, 
             },
         )
 
         recipe_table.grant_read_write_data(lambda_fn)
         user_table.grant_read_write_data(lambda_fn)
         recipe_tag_table.grant_read_write_data(lambda_fn)
+        ingredient_table.grant_read_write_data(lambda_fn)
 
         apigw = apigateway.LambdaRestApi(
             self,
