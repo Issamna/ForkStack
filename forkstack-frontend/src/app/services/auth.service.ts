@@ -44,6 +44,28 @@ export class AuthService {
     return this.http.post(`${this.apiUrl}`, data);
   }
 
+  getMe(): Observable<any> {
+    return this.http.get(`${this.apiUrl}/me`);
+  }
+
+  updateProfile(data: {
+    username?: string;
+    email?: string;
+  }): Observable<any> {
+    return this.http.patch(`${this.apiUrl}/me`, data);
+  }
+
+  changePassword(data: {
+    current_password: string;
+    new_password: string;
+  }): Observable<any> {
+    return this.http.post(`${this.apiUrl}/me/change-password`, data);
+  }
+
+  deleteAccount(): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/me`);
+  }
+
   logout(expired = false): void {
     localStorage.removeItem('access_token');
     this.router.navigate(

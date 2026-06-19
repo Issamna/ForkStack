@@ -6,3 +6,4 @@ python-jose
 python-multipart
 beautifulsoup4
 recipe-scrapers
+requests

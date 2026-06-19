@@ -1,4 +1,5 @@
 import logging
+import os
 import sys
 
 from fastapi import FastAPI
@@ -33,12 +34,21 @@ def get_openapi():
     return app.openapi()
 
 
+# Comma-separated list of allowed origins; defaults to the Angular dev server.
+allowed_origins = [
+    origin.strip()
+    for origin in os.environ.get("ALLOWED_ORIGINS", "http://localhost:4200").split(",")
+    if origin.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # or ["http://localhost:3000"]
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=allowed_origins,
+    # Auth uses bearer tokens in the Authorization header, not cookies, so
+    # credentialed requests are unnecessary (and incompatible with "*").
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 handler = Mangum(app)

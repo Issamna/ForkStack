@@ -2,9 +2,10 @@ import boto3
 import os
 import uuid
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from typing import List
 
+from dependencies import get_current_user
 from models.recipe import RecipeTag
 
 dynamodb = boto3.resource("dynamodb")
@@ -15,14 +16,14 @@ router = APIRouter()
 
 
 @router.get("", response_model=List[RecipeTag])
-def list_all_tags():
+def list_all_tags(current_user_id: str = Depends(get_current_user)):
     response = table.scan()
     items = response.get("Items", [])
     return sorted(items, key=lambda x: x["name"].lower())
 
 
 @router.get("/{tag_id}", response_model=RecipeTag)
-def get_tag(tag_id: str):
+def get_tag(tag_id: str, current_user_id: str = Depends(get_current_user)):
     response = table.get_item(Key={"id": tag_id})
     item = response.get("Item")
     if not item:
@@ -31,7 +32,7 @@ def get_tag(tag_id: str):
 
 
 @router.post("", response_model=RecipeTag)
-def create_tag(tag: RecipeTag):
+def create_tag(tag: RecipeTag, current_user_id: str = Depends(get_current_user)):
     normalized_name = tag.name.strip().lower()
     response = table.scan()
     for item in response.get("Items", []):

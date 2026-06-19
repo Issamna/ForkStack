@@ -9,6 +9,7 @@ import { RecaptchaV3Module, RECAPTCHA_V3_SITE_KEY } from 'ng-recaptcha';
 import { RegisterComponent } from './register/register.component';
 import { ReactiveFormsModule } from '@angular/forms';
 import { ForgotPasswordComponent } from './forgot-password/forgot-password.component';
+import { AccountComponent } from './account/account.component';
 import { AuthInterceptor } from './auth.interceptor';
 
 @NgModule({
@@ -17,6 +18,7 @@ import { AuthInterceptor } from './auth.interceptor';
     LoginComponent,
     RegisterComponent,
     ForgotPasswordComponent,
+    AccountComponent,
   ],
   imports: [
     BrowserModule,

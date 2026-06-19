@@ -1,0 +1,108 @@
+<div class="page-wrapper">
+  <div class="text-center mb-8">
+    <h1 class="heading-primary">Your Account</h1>
+  </div>
+
+  <div *ngIf="loading" class="text-center text-subtle">Loading…</div>
+
+  <div *ngIf="!loading" class="card-box space-y-10">
+    <!-- Profile -->
+    <section>
+      <h2 class="heading-secondary">Profile</h2>
+      <form (ngSubmit)="saveProfile()" class="flex flex-col space-y-4">
+        <input
+          [(ngModel)]="username"
+          name="username"
+          placeholder="Username"
+          required
+          class="form-input"
+        />
+        <input
+          [(ngModel)]="email"
+          name="email"
+          type="email"
+          placeholder="Email"
+          required
+          class="form-input"
+        />
+        <button type="submit" class="button-primary">Save changes</button>
+      </form>
+      <p *ngIf="profileMessage" class="mt-3 text-sm text-center text-green-600">
+        {{ profileMessage }}
+      </p>
+      <p *ngIf="profileError" class="mt-3 text-sm text-center text-red-600">
+        {{ profileError }}
+      </p>
+    </section>
+
+    <!-- Password -->
+    <section>
+      <h2 class="heading-secondary">Change password</h2>
+      <form (ngSubmit)="changePassword()" class="flex flex-col space-y-4">
+        <input
+          [(ngModel)]="currentPassword"
+          name="currentPassword"
+          type="password"
+          placeholder="Current password"
+          required
+          class="form-input"
+        />
+        <input
+          [(ngModel)]="newPassword"
+          name="newPassword"
+          type="password"
+          placeholder="New password"
+          required
+          class="form-input"
+        />
+        <input
+          [(ngModel)]="confirmPassword"
+          name="confirmPassword"
+          type="password"
+          placeholder="Confirm new password"
+          required
+          class="form-input"
+        />
+        <button type="submit" class="button-primary">Update password</button>
+      </form>
+      <p *ngIf="passwordMessage" class="mt-3 text-sm text-center text-green-600">
+        {{ passwordMessage }}
+      </p>
+      <p *ngIf="passwordError" class="mt-3 text-sm text-center text-red-600">
+        {{ passwordError }}
+      </p>
+    </section>
+
+    <!-- Danger zone -->
+    <section>
+      <h2 class="heading-secondary">Delete account</h2>
+      <p class="text-sm text-subtle mb-3">
+        This permanently deletes your account and all of your recipes.
+      </p>
+      <button
+        *ngIf="!confirmingDelete"
+        (click)="confirmingDelete = true"
+        class="button-primary bg-red-600 hover:bg-red-700"
+      >
+        Delete my account
+      </button>
+      <div *ngIf="confirmingDelete" class="flex flex-col space-y-3">
+        <p class="text-sm text-red-600">Are you sure? This cannot be undone.</p>
+        <div class="flex gap-3">
+          <button
+            (click)="deleteAccount()"
+            class="button-primary bg-red-600 hover:bg-red-700"
+          >
+            Yes, delete
+          </button>
+          <button (click)="confirmingDelete = false" class="button-primary">
+            Cancel
+          </button>
+        </div>
+      </div>
+      <p *ngIf="deleteError" class="mt-3 text-sm text-center text-red-600">
+        {{ deleteError }}
+      </p>
+    </section>
+  </div>
+</div>

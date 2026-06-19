@@ -4,6 +4,7 @@ from aws_cdk import (
     aws_lambda_python_alpha as lambda_python,
     aws_apigateway as apigateway,
     aws_dynamodb as dynamodb,
+    aws_secretsmanager as secretsmanager,
     RemovalPolicy,
 )
 from constructs import Construct
@@ -47,6 +48,26 @@ class AppStack(Stack):
             removal_policy=RemovalPolicy.RETAIN,
         )
 
+        # JWT signing key -- auto-generated, never checked into source.
+        jwt_secret = secretsmanager.Secret(
+            self,
+            "JwtSecret",
+            description="ForkStack JWT signing key",
+            generate_secret_string=secretsmanager.SecretStringGenerator(
+                password_length=48,
+                exclude_punctuation=True,
+            ),
+        )
+
+        # reCAPTCHA v3 server secret -- placeholder; populate with the real key
+        # via `aws secretsmanager put-secret-value` before enabling enforcement.
+        recaptcha_secret = secretsmanager.Secret(
+            self,
+            "RecaptchaSecret",
+            secret_name="forkstack/recaptcha",
+            description="ForkStack reCAPTCHA v3 secret key",
+        )
+
         entry = Path(__file__).resolve().parent.parent / "src"
 
         lambda_fn = lambda_python.PythonFunction(
@@ -60,7 +81,11 @@ class AppStack(Stack):
                 "RECIPE_TABLE": recipe_table.table_name,
                 "USER_TABLE": user_table.table_name,
                 "RECIPE_TAG_TABLE": recipe_tag_table.table_name,
-                "INGREDIENT_TABLE": ingredient_table.table_name, 
+                "INGREDIENT_TABLE": ingredient_table.table_name,
+                "JWT_SECRET_ARN": jwt_secret.secret_arn,
+                "RECAPTCHA_SECRET_ARN": recaptcha_secret.secret_arn,
+                "ENFORCE_RECAPTCHA": "false",
+                "ALLOWED_ORIGINS": "http://localhost:4200",
             },
         )
 
@@ -68,6 +93,8 @@ class AppStack(Stack):
         user_table.grant_read_write_data(lambda_fn)
         recipe_tag_table.grant_read_write_data(lambda_fn)
         ingredient_table.grant_read_write_data(lambda_fn)
+        jwt_secret.grant_read(lambda_fn)
+        recaptcha_secret.grant_read(lambda_fn)
 
         apigw = apigateway.LambdaRestApi(
             self,

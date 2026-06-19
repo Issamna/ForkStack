@@ -110,8 +110,10 @@ def delete(recipe_id: str, current_user_id: str = Depends(get_current_user)):
 
 
 @router.post("/parse-url")
-def parse_recipe_url(data: URLIn):
+def parse_recipe_url(data: URLIn, current_user_id: str = Depends(get_current_user)):
     try:
         return recipe_scraper(data.url)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to parse recipe: {str(e)}")
