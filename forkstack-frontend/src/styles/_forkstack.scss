@@ -5,7 +5,7 @@
 }
 
 .logo-wrapper {
-  @apply flex items-center gap-3;
+  @apply flex items-center gap-3 mx-auto;
 }
 
 .logo-image {
@@ -28,9 +28,17 @@
   @apply bg-textgray text-white p-2 sm:px-4 sm:py-2 rounded hover:bg-accent hover:text-textgray font-semibold flex items-center justify-center;
 }
 
-/* Secondary (outline) nav button — e.g. Account, paired with the filled Logout */
+/* Outline nav button — used as the top-right account/menu dropdown trigger */
 .nav-button {
-  @apply border border-textgray text-textgray p-2 sm:px-4 sm:py-2 rounded hover:bg-accent hover:border-accent hover:text-textgray font-semibold flex items-center justify-center transition;
+  @apply border border-textgray text-textgray p-2 rounded hover:bg-accent hover:border-accent hover:text-textgray font-semibold flex items-center justify-center gap-1 transition;
+}
+
+.dropdown-menu {
+  @apply absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded shadow-md py-1 z-20;
+}
+
+.dropdown-item {
+  @apply block w-full text-left px-4 py-2 text-sm text-textgray hover:bg-accent hover:text-white cursor-pointer transition;
 }
 
 .form-input {
