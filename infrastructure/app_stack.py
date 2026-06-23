@@ -1,4 +1,5 @@
 from aws_cdk import (
+    Duration,
     Stack,
     aws_lambda as lambda_,
     aws_lambda_python_alpha as lambda_python,
@@ -77,6 +78,10 @@ class AppStack(Stack):
             index="api.py",
             handler="handler",
             runtime=lambda_.Runtime.PYTHON_3_12,
+            # Recipe import fetches and parses external pages; the 3s default is
+            # far too short. 29s aligns with the API Gateway integration cap.
+            timeout=Duration.seconds(29),
+            memory_size=512,
             environment={
                 "RECIPE_TABLE": recipe_table.table_name,
                 "USER_TABLE": user_table.table_name,
