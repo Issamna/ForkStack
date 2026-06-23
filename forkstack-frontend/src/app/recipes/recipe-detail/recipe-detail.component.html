@@ -63,6 +63,16 @@
         </button>
       </div>
     </div>
+
+    <!-- Non-owner: fork a shared recipe into your own cookbook -->
+    <button
+      *ngIf="!isOwner()"
+      (click)="addToCookbook()"
+      [disabled]="adding"
+      class="bg-accent text-white px-3 py-1.5 rounded text-sm font-semibold hover:bg-primary transition disabled:opacity-60"
+    >
+      {{ adding ? "Adding…" : "+ Add to my cookbook" }}
+    </button>
   </div>
   <div *ngIf="recipe.recipe_tags?.length" class="flex flex-wrap gap-2 mb-4">
     <span

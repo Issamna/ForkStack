@@ -34,6 +34,10 @@ export class RecipeFormComponent implements OnInit {
     this.recipe_id = this.route.snapshot.paramMap.get('id');
     this.editing = !!this.recipe_id;
 
+    if (!this.editing && this.route.snapshot.queryParamMap.get('import') === '1') {
+      this.showParser = true;
+    }
+
     this.recipeService.getTags().subscribe((tags) => {
       this.availableTags = tags;
 

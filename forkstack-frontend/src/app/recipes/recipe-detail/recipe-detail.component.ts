@@ -12,6 +12,7 @@ import { ImageHelperService } from '../../services/image-helper.service';
 export class RecipeDetailComponent implements OnInit {
   recipe?: Recipe;
   showConfirm = false;
+  adding = false;
 
   constructor(
     private route: ActivatedRoute,
@@ -22,12 +23,17 @@ export class RecipeDetailComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    const id = this.route.snapshot.paramMap.get('id');
-    if (id) {
+    // Subscribe (not snapshot) so detail -> detail navigation (e.g. after
+    // forking a shared recipe) reloads the newly-selected recipe.
+    this.route.paramMap.subscribe((params) => {
+      const id = params.get('id');
+      if (!id) return;
+      this.adding = false;
+      this.recipe = undefined;
       this.recipeService.getById(id).subscribe((data) => {
         this.recipe = data;
       });
-    }
+    });
   }
 
   deleteRecipe(): void {
@@ -44,5 +50,15 @@ export class RecipeDetailComponent implements OnInit {
   isOwner(): boolean {
     const currentUserId = this.auth.getUserId();
     return this.recipe?.owner_id === currentUserId;
+  }
+
+  addToCookbook(): void {
+    if (!this.recipe || this.adding) return;
+    this.adding = true;
+    const { recipe_id, owner_id, ...rest } = this.recipe;
+    this.recipeService.create({ ...rest, is_shareable: false }).subscribe({
+      next: (created) => this.router.navigate(['/recipes', created.recipe_id]),
+      error: () => (this.adding = false),
+    });
   }
 }

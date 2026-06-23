@@ -1,11 +1,37 @@
-<div class="max-w-5xl mx-auto px-4 py-8">
+<div class="max-w-6xl mx-auto px-4 py-8">
+  <!-- Tabs -->
+  <div class="flex justify-center mb-6">
+    <div class="inline-flex bg-gray-200 rounded-full p-1">
+      <button
+        (click)="setTab('mine')"
+        class="px-5 py-1.5 text-sm font-semibold rounded-full transition"
+        [ngClass]="
+          tab === 'mine' ? 'bg-white text-textgray shadow' : 'text-gray-500'
+        "
+      >
+        My Recipes
+      </button>
+      <button
+        (click)="setTab('discover')"
+        class="px-5 py-1.5 text-sm font-semibold rounded-full transition"
+        [ngClass]="
+          tab === 'discover' ? 'bg-white text-textgray shadow' : 'text-gray-500'
+        "
+      >
+        Discover
+      </button>
+    </div>
+  </div>
+
+  <!-- Search -->
   <div class="relative text-textgray w-full max-w-md mx-auto mb-8">
     <input
       type="text"
       name="search"
       [(ngModel)]="search"
       (keyup.enter)="searchRecipes()"
-      placeholder="Search"
+      (input)="searchRecipes()"
+      placeholder="Search {{ tab === 'mine' ? 'your' : 'shared' }} recipes"
       class="bg-white w-full h-10 px-5 pr-10 rounded-full text-sm focus:outline-none border border-gray-300"
     />
     <button
@@ -19,41 +45,83 @@
         viewBox="0 0 56.966 56.966"
       >
         <path
-          d="M55.146,51.887L41.588,37.786c3.486-4.144,
-          5.396-9.358,5.396-14.786c0-12.682-10.318-23-23-23s-23,10.318-23,23
-          s10.318,23,23,23c4.761,0,9.298-1.436,13.177-4.162l13.661,
-          14.208c0.571,0.593,1.339,0.92,2.162,0.92
-          c0.779,0,1.518-0.297,2.079-0.837
-          C56.255,54.982,56.293,53.08,55.146,51.887z
-          M23.984,6c9.374,0,17,7.626,17,17s-7.626,17-17,17
-          s-17-7.626-17-17S14.61,6,23.984,6z"
+          d="M55.146,51.887L41.588,37.786c3.486-4.144,5.396-9.358,5.396-14.786c0-12.682-10.318-23-23-23s-23,10.318-23,23
+          s10.318,23,23,23c4.761,0,9.298-1.436,13.177-4.162l13.661,14.208c0.571,0.593,1.339,0.92,2.162,0.92
+          c0.779,0,1.518-0.297,2.079-0.837C56.255,54.982,56.293,53.08,55.146,51.887z
+          M23.984,6c9.374,0,17,7.626,17,17s-7.626,17-17,17s-17-7.626-17-17S14.61,6,23.984,6z"
         />
       </svg>
     </button>
   </div>
 
-  <!-- No Results -->
-  <div *ngIf="filtered.length === 0" class="text-center text-sm text-gray-500">
-    No recipes found.
+  <!-- Loading -->
+  <div *ngIf="loading" class="text-center text-gray-400 py-12">
+    Loading recipes…
+  </div>
+
+  <!-- Empty states -->
+  <div
+    *ngIf="!loading && recipes.length === 0"
+    class="text-center py-16 max-w-md mx-auto"
+  >
+    <img src="assets/logo.png" alt="" class="h-16 w-16 mx-auto opacity-40 mb-4" />
+    <ng-container *ngIf="search">
+      <p class="text-lg font-semibold text-textgray mb-1">No matches</p>
+      <p class="text-sm text-gray-500">
+        Nothing here matches “{{ search }}”.
+      </p>
+    </ng-container>
+    <ng-container *ngIf="!search && tab === 'mine'">
+      <p class="text-lg font-semibold text-textgray mb-1">
+        Your cookbook is empty
+      </p>
+      <p class="text-sm text-gray-500 mb-6">
+        Add your first recipe to get started.
+      </p>
+      <div class="flex justify-center gap-3">
+        <a routerLink="/recipes/new" class="button-primary inline-block">
+          Create recipe
+        </a>
+        <a
+          [routerLink]="['/recipes/new']"
+          [queryParams]="{ import: 1 }"
+          class="nav-button inline-flex"
+        >
+          Import from URL
+        </a>
+      </div>
+    </ng-container>
+    <ng-container *ngIf="!search && tab === 'discover'">
+      <p class="text-lg font-semibold text-textgray mb-1">
+        Nothing shared yet
+      </p>
+      <p class="text-sm text-gray-500">
+        Check back later for recipes shared by the community.
+      </p>
+    </ng-container>
   </div>
 
   <!-- Recipe Grid -->
-  <div class="grid grid-cols-2 gap-4 max-w-xl mx-auto">
+  <div
+    *ngIf="!loading && filtered.length"
+    class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4"
+  >
     <div
       *ngFor="let recipe of filtered"
       [routerLink]="[recipe.recipe_id]"
-      class="bg-white rounded-lg shadow hover:shadow-md overflow-hidden cursor-pointer aspect-square"
+      class="bg-white rounded-lg shadow hover:shadow-md overflow-hidden cursor-pointer aspect-square flex flex-col"
     >
       <img
         [src]="recipe.imageSrc"
         alt="Recipe image"
-        class="w-full h-2/3 sm:h-4/5 object-cover"
+        class="w-full h-3/5 object-cover"
       />
-      <div class="p-2 flex flex-col justify-center items-center text-center">
-        <h3 class="text-xs sm:text-sm font-semibold text-textgray break-words">
+      <div class="p-2 flex flex-col justify-center items-center text-center flex-1">
+        <h3
+          class="text-xs sm:text-sm font-semibold text-textgray break-words line-clamp-2"
+        >
           {{ recipe.title }}
         </h3>
-
         <p
           class="text-xs text-gray-500 mt-1 truncate w-full text-center"
           *ngIf="recipe.recipe_tags?.length"
@@ -65,22 +133,21 @@
     </div>
   </div>
 
-  <!-- Pagination -->
-  <div class="flex justify-center items-center gap-4 mt-6">
-    <button
-      (click)="prevPage()"
-      [disabled]="page === 1"
-      class="pagination-button"
-    >
-      <
+  <!-- Pagination (only when more than one page) -->
+  <div
+    *ngIf="totalPages > 1"
+    class="flex justify-center items-center gap-4 mt-8"
+  >
+    <button (click)="prevPage()" [disabled]="page === 1" class="pagination-button">
+      ‹
     </button>
-    <span class="text-textgray">{{ page }}</span>
+    <span class="text-textgray text-sm">{{ page }} / {{ totalPages }}</span>
     <button
       (click)="nextPage()"
-      [disabled]="page * 10 >= recipes.length"
+      [disabled]="page >= totalPages"
       class="pagination-button"
     >
-      >
+      ›
     </button>
   </div>
 </div>
