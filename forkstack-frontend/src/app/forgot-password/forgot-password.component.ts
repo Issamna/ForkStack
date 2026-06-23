@@ -18,6 +18,7 @@ export class ForgotPasswordComponent {
 
   onSubmit(): void {
     this.submitted = true;
-    this.message = "This feature doesn't exist. Contact you-know-who.";
+    this.message =
+      'Password reset by email is coming soon. In the meantime, please contact support to recover your account.';
   }
 }

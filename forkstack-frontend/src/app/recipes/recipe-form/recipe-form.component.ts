@@ -18,6 +18,7 @@ export class RecipeFormComponent implements OnInit {
   showParser = false;
   isParsing = false;
   parseError: string | null = null;
+  formError: string | null = null;
   recipe_tags: string[] = [];
   availableTags: { id: string; name: string }[] = [];
   showTagDropdown = false;
@@ -115,15 +116,38 @@ export class RecipeFormComponent implements OnInit {
   }
 
   submit(): void {
+    this.formError = null;
+    const title = this.title.trim();
+    const ingredients = this.ingredients
+      .filter((i) => i.name.trim())
+      .map((i) => ({ ...i, name: i.name.trim() }));
+    const instructions = this.instructions
+      .filter((s) => s.text.trim())
+      .map((s, idx) => ({ step_number: idx + 1, text: s.text.trim() }));
+
+    if (!title) {
+      this.formError = 'Please add a recipe title.';
+      return;
+    }
+    if (ingredients.length === 0) {
+      this.formError = 'Add at least one ingredient.';
+      return;
+    }
+    if (instructions.length === 0) {
+      this.formError = 'Add at least one instruction step.';
+      return;
+    }
+
     const recipeData: any = {
-      title: this.title,
-      ingredients: this.ingredients,
-      instructions: this.instructions,
+      title,
+      ingredients,
+      instructions,
       is_shareable: this.is_shareable,
       recipe_tags: this.recipe_tags,
     };
 
-    if (!this.editing && this.recipeUrl.trim()) {
+    // Preserve the source link on both create and edit.
+    if (this.recipeUrl.trim()) {
       recipeData.import_source_url = this.recipeUrl.trim();
     }
 

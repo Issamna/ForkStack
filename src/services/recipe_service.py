@@ -88,6 +88,7 @@ def update(
         "instructions": [s.dict() for s in recipe.instructions],
         "is_shareable": recipe.is_shareable,
         "owner_id": current_user_id,
+        "import_source_url": recipe.import_source_url,
         "recipe_tags": recipe.recipe_tags,
     }
     table.put_item(Item=updated)

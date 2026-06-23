@@ -177,6 +177,9 @@
 
   <!-- Submit -->
   <div class="mt-8 text-center">
+    <div *ngIf="formError" class="text-red-600 text-sm mb-3">
+      {{ formError }}
+    </div>
     <button
       type="submit"
       (click)="submit()"
