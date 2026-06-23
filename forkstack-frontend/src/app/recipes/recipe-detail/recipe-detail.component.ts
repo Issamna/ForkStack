@@ -13,6 +13,7 @@ export class RecipeDetailComponent implements OnInit {
   recipe?: Recipe;
   showConfirm = false;
   adding = false;
+  downloadingPdf = false;
 
   constructor(
     private route: ActivatedRoute,
@@ -50,6 +51,29 @@ export class RecipeDetailComponent implements OnInit {
   isOwner(): boolean {
     const currentUserId = this.auth.getUserId();
     return this.recipe?.owner_id === currentUserId;
+  }
+
+  downloadPdf(): void {
+    if (!this.recipe || this.downloadingPdf) return;
+    this.downloadingPdf = true;
+    this.recipeService.downloadPdf(this.recipe.recipe_id).subscribe({
+      next: (res) => {
+        const binary = atob(res.content_base64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+          bytes[i] = binary.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = res.filename;
+        a.click();
+        URL.revokeObjectURL(url);
+        this.downloadingPdf = false;
+      },
+      error: () => (this.downloadingPdf = false),
+    });
   }
 
   addToCookbook(): void {

@@ -1,5 +1,7 @@
+import base64
 import boto3
 import os
+import re
 import uuid
 
 from boto3.dynamodb.conditions import Key
@@ -9,6 +11,7 @@ from typing import List
 from dependencies import get_current_user
 from models.recipe import RecipeIn, RecipeOut, URLIn
 from utils.parser import recipe_scraper
+from utils.pdf import build_recipe_pdf
 
 
 dynamodb = boto3.resource("dynamodb")
@@ -66,6 +69,23 @@ def get(recipe_id: str, user_id: str = Depends(get_current_user)):
     if item["owner_id"] != user_id and not item.get("is_shareable", False):
         raise HTTPException(status_code=403, detail="Access denied")
     return item
+
+
+@router.get("/{recipe_id}/pdf")
+def get_pdf(recipe_id: str, user_id: str = Depends(get_current_user)):
+    response = table.get_item(Key={"recipe_id": recipe_id})
+    item = response.get("Item")
+    if not item:
+        raise HTTPException(status_code=404, detail="Recipe not found")
+    if item.get("owner_id") != user_id and not item.get("is_shareable", False):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    pdf_bytes = build_recipe_pdf(item)
+    slug = re.sub(r"[^a-z0-9]+", "-", (item.get("title") or "recipe").lower()).strip("-")
+    return {
+        "filename": f"{slug or 'recipe'}.pdf",
+        "content_base64": base64.b64encode(pdf_bytes).decode("ascii"),
+    }
 
 
 @router.put("/{recipe_id}", response_model=RecipeOut)

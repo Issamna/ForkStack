@@ -98,6 +98,15 @@ export class RecipeService {
     );
   }
 
+  downloadPdf(
+    id: string,
+  ): Observable<{ filename: string; content_base64: string }> {
+    return this.http.get<{ filename: string; content_base64: string }>(
+      `${this.apiUrl}/${id}/pdf`,
+      { headers: this.authHeaders() },
+    );
+  }
+
   getTags(): Observable<{ id: string; name: string }[]> {
     return this.http.get<{ id: string; name: string }[]>(
       'https://e6q9keyixh.execute-api.us-east-1.amazonaws.com/prod/tags',
