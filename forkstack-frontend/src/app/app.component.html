@@ -21,9 +21,21 @@
     <a
       *ngIf="authService.isLoggedIn()"
       routerLink="/account"
-      class="text-accent hover:underline text-sm"
+      class="nav-button"
     >
-      Account
+      <svg
+        class="h-6 w-6 sm:hidden"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        viewBox="0 0 24 24"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+        <circle cx="12" cy="7" r="4"></circle>
+      </svg>
+      <span class="hidden sm:inline">Account</span>
     </a>
     <button
       *ngIf="authService.isLoggedIn()"
