@@ -42,7 +42,7 @@
         <input
           [(ngModel)]="currentPassword"
           name="currentPassword"
-          type="password"
+          [type]="showPasswords ? 'text' : 'password'"
           placeholder="Current password"
           required
           class="form-input"
@@ -50,7 +50,7 @@
         <input
           [(ngModel)]="newPassword"
           name="newPassword"
-          type="password"
+          [type]="showPasswords ? 'text' : 'password'"
           placeholder="New password"
           required
           class="form-input"
@@ -58,11 +58,19 @@
         <input
           [(ngModel)]="confirmPassword"
           name="confirmPassword"
-          type="password"
+          [type]="showPasswords ? 'text' : 'password'"
           placeholder="Confirm new password"
           required
           class="form-input"
         />
+        <label class="flex items-center gap-2 text-sm text-subtle">
+          <input
+            type="checkbox"
+            [(ngModel)]="showPasswords"
+            name="showPasswords"
+          />
+          Show passwords
+        </label>
         <button type="submit" class="button-primary">Update password</button>
       </form>
       <p *ngIf="passwordMessage" class="mt-3 text-sm text-center text-green-600">

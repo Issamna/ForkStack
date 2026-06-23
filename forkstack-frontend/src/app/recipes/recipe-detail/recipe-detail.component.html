@@ -2,36 +2,44 @@
   *ngIf="recipe; else loading"
   class="max-w-4xl mx-auto px-4 py-8 text-textgray"
 >
+  <a
+    routerLink="/recipes"
+    class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-accent mb-4"
+  >
+    ‹ Back to recipes
+  </a>
+
   <!-- Header -->
   <div class="flex items-center justify-between flex-wrap mb-1 gap-2">
     <div class="flex items-center gap-3">
       <h1 class="text-3xl sm:text-4xl font-bold break-words">
         {{ recipe.title }}
       </h1>
-      <div *ngIf="isOwner()" class="flex gap-2 mb-1">
+      <div class="flex gap-2 mb-1">
         <a
           *ngIf="recipe.import_source_url"
           [href]="recipe.import_source_url"
           target="_blank"
           rel="noopener noreferrer"
-          title="View Originals"
+          title="View original recipe"
           class="group relative h-6 w-6 block transition"
         >
           <img
             src="assets/link.svg"
-            alt="View Original"
+            alt="View original"
             class="h-6 w-6 absolute inset-0 group-hover:opacity-0 transition-opacity duration-200"
           />
           <img
             src="assets/link-hover.svg"
-            alt="View Original Hover"
+            alt="View original hover"
             class="h-6 w-6 absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
           />
         </a>
 
-        <a
-          [routerLink]="['/recipes', recipe.recipe_id, 'edit']"
-          title="Edit"
+        <ng-container *ngIf="isOwner()">
+          <a
+            [routerLink]="['/recipes', recipe.recipe_id, 'edit']"
+            title="Edit"
           class="group relative h-6 w-6 block transition"
         >
           <img
@@ -61,6 +69,7 @@
             class="h-6 w-6 absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
           />
         </button>
+        </ng-container>
       </div>
     </div>
 

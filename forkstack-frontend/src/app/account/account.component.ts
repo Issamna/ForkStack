@@ -15,6 +15,7 @@ export class AccountComponent implements OnInit {
 
   loading = true;
   confirmingDelete = false;
+  showPasswords = false;
 
   profileMessage: string | null = null;
   profileError: string | null = null;

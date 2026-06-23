@@ -13,6 +13,7 @@ export class LoginComponent {
   password = '';
   error: string | null = null;
   rememberMe = false;
+  showPassword = false;
   private expiredHandled = false;
 
   constructor(

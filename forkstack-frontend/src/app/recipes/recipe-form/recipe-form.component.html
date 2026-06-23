@@ -1,35 +1,48 @@
 <div class="max-w-4xl mx-auto px-4 py-8">
-  <!-- Title Row: Input + Import + Share -->
+  <!-- Title Row: Input + Import -->
   <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3">
     <input
       [(ngModel)]="title"
       name="title"
       required
-      placeholder="Recipe Title"
+      placeholder="Recipe title"
+      aria-label="Recipe title"
       class="border border-gray-300 rounded px-3 py-2 w-full sm:flex-1 focus:outline-none focus:ring-2 focus:ring-accent"
     />
-
-    <div class="flex gap-2 sm:ml-auto w-full sm:w-auto">
-      <!-- Import Button -->
-      <button
-        (click)="showParser = true"
-        class="bg-accent text-white px-4 py-2 rounded hover:bg-primary hover:text-white w-full sm:w-auto"
-      >
-        Import
-      </button>
-
-      <!-- Share Toggle -->
-      <button
-        (click)="is_shareable = !is_shareable"
-        [ngClass]="
-          is_shareable ? 'bg-primary text-white' : 'bg-gray-300 text-textgray'
-        "
-        class="px-4 py-2 rounded hover:opacity-90 transition w-full sm:w-auto"
-      >
-        {{ is_shareable ? "Share ✅" : "Share ❌" }}
-      </button>
-    </div>
+    <button
+      (click)="showParser = true"
+      class="bg-accent text-white px-4 py-2 rounded hover:bg-primary hover:text-white w-full sm:w-auto"
+    >
+      Import from URL
+    </button>
   </div>
+
+  <!-- Visibility toggle -->
+  <div class="mt-4 flex items-center gap-3">
+    <span class="text-sm font-medium text-textgray">Visibility</span>
+    <button
+      type="button"
+      role="switch"
+      [attr.aria-checked]="is_shareable"
+      (click)="is_shareable = !is_shareable"
+      class="relative inline-flex h-6 w-11 items-center rounded-full transition"
+      [ngClass]="is_shareable ? 'bg-accent' : 'bg-gray-300'"
+    >
+      <span
+        class="inline-block h-4 w-4 transform rounded-full bg-white transition"
+        [ngClass]="is_shareable ? 'translate-x-6' : 'translate-x-1'"
+      ></span>
+    </button>
+    <span
+      class="text-sm font-semibold"
+      [ngClass]="is_shareable ? 'text-textgray' : 'text-gray-500'"
+    >
+      {{ is_shareable ? "Public" : "Private" }}
+    </span>
+  </div>
+  <p class="text-xs text-gray-500 mt-1">
+    Public recipes appear in others’ Discover tab.
+  </p>
 
   <!-- Tag Selector -->
   <div class="mt-4 mb-4 flex items-start gap-4 relative">
@@ -72,47 +85,62 @@
         </div>
       </div>
     </div>
-    <!-- Plain list of tags shown to the right -->
+    <!-- Selected tags as removable chips -->
     <div class="flex flex-wrap gap-2 items-center pt-1">
-      <span *ngFor="let tag of recipe_tags" class="text-sm px-2 py-1 rounded">
+      <span
+        *ngFor="let tag of recipe_tags"
+        class="inline-flex items-center gap-1 text-sm bg-gray-100 text-textgray px-2 py-1 rounded-full"
+      >
         {{ tag }}
+        <button
+          type="button"
+          (click)="onTagToggle(tag, false)"
+          class="text-gray-400 hover:text-red-600 leading-none"
+          [attr.aria-label]="'Remove ' + tag"
+        >
+          ×
+        </button>
       </span>
     </div>
   </div>
 
   <!-- Main Layout -->
-  <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+  <div class="mt-6 space-y-8">
     <!-- Ingredients Section -->
-    <div class="md:col-span-2 order-2 md:order-1">
-      <!-- Ingredients -->
+    <div>
       <h2 class="text-xl font-semibold text-textgray mb-2">Ingredients</h2>
       <div class="flex flex-col gap-2">
+        <div
+          *ngIf="ingredients.length"
+          class="grid grid-cols-8 gap-2 text-xs font-medium text-gray-500 px-1"
+        >
+          <span class="col-span-1">Qty</span>
+          <span class="col-span-2">Unit</span>
+          <span class="col-span-5">Ingredient</span>
+        </div>
         <div
           class="grid grid-cols-8 gap-2 items-center"
           *ngFor="let ing of ingredients; let i = index"
         >
-          <!-- Quantity: 2/8 -->
           <input
             [(ngModel)]="ing.quantity"
             name="qty-{{ i }}"
-            placeholder="Qty"
+            aria-label="Quantity"
             class="col-span-1 border px-2 py-1 rounded w-full"
           />
 
-          <!-- Unit: 2/8 -->
           <input
             [(ngModel)]="ing.measurement_type"
             name="unit-{{ i }}"
-            placeholder="Unit"
+            aria-label="Unit"
             class="col-span-2 border px-2 py-1 rounded w-full"
           />
 
-          <!-- Ingredient name: 4/8 -->
           <div class="col-span-5 flex gap-2">
             <input
               [(ngModel)]="ing.name"
               name="name-{{ i }}"
-              placeholder="Ingredient"
+              aria-label="Ingredient name"
               class="border px-2 py-1 rounded w-full"
             />
             <button
@@ -137,10 +165,8 @@
     </div>
 
     <!-- Instructions Section -->
-    <div class="md:col-span-3 order-3">
-      <h2 class="text-xl font-semibold text-textgray mt-6 mb-2">
-        Instructions
-      </h2>
+    <div>
+      <h2 class="text-xl font-semibold text-textgray mb-2">Instructions</h2>
       <div class="flex flex-col gap-3">
         <div
           class="flex gap-2 items-start"
@@ -176,17 +202,25 @@
   </div>
 
   <!-- Submit -->
-  <div class="mt-8 text-center">
-    <div *ngIf="formError" class="text-red-600 text-sm mb-3">
+  <div class="mt-8">
+    <div *ngIf="formError" class="text-red-600 text-sm mb-3 text-center">
       {{ formError }}
     </div>
-    <button
-      type="submit"
-      (click)="submit()"
-      class="bg-textgray text-white px-6 py-3 rounded hover:bg-accent hover:text-textgray transition"
-    >
-      Save Recipe
-    </button>
+    <div class="flex justify-center gap-3">
+      <a
+        routerLink="/recipes"
+        class="px-6 py-3 rounded border border-gray-300 text-textgray hover:bg-gray-100 transition"
+      >
+        Cancel
+      </a>
+      <button
+        type="submit"
+        (click)="submit()"
+        class="bg-textgray text-white px-6 py-3 rounded hover:bg-accent hover:text-textgray transition"
+      >
+        {{ editing ? "Save changes" : "Save Recipe" }}
+      </button>
+    </div>
   </div>
 
   <!-- Parser Modal -->

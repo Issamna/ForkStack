@@ -13,6 +13,7 @@ export class RegisterComponent {
   submitting = false;
   errorMessage = '';
   successMessage = '';
+  showPassword = false;
 
   constructor(
     private fb: FormBuilder,
