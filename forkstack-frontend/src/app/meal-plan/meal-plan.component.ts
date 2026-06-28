@@ -13,21 +13,33 @@ interface DayDef {
   templateUrl: './meal-plan.component.html',
 })
 export class MealPlanComponent implements OnInit {
-  readonly days: DayDef[] = [
+  // Canonical, indexed by JS Date.getDay() (0 = Sunday .. 6 = Saturday).
+  readonly allDays: DayDef[] = [
+    { key: 'sun', label: 'Sunday' },
     { key: 'mon', label: 'Monday' },
     { key: 'tue', label: 'Tuesday' },
     { key: 'wed', label: 'Wednesday' },
     { key: 'thu', label: 'Thursday' },
     { key: 'fri', label: 'Friday' },
     { key: 'sat', label: 'Saturday' },
-    { key: 'sun', label: 'Sunday' },
   ];
   readonly meals = ['breakfast', 'lunch', 'dinner', 'snack'];
+
+  // Day the week starts on (0 = Sunday .. 6 = Saturday); user preference.
+  weekStartDow = this.readWeekStartPref();
 
   entries: MealEntry[] = [];
   recipes: Recipe[] = [];
   loading = true;
-  weekStart: Date = this.mondayOf(new Date());
+  weekStart: Date = this.weekStartOf(new Date(), this.weekStartDow);
+
+  // Day rows, ordered from the chosen start day.
+  get days(): DayDef[] {
+    return Array.from(
+      { length: 7 },
+      (_, i) => this.allDays[(this.weekStartDow + i) % 7],
+    );
+  }
 
   // Add modal state
   showAdd = false;
@@ -66,10 +78,23 @@ export class MealPlanComponent implements OnInit {
   }
 
   // --- Week navigation ---
-  mondayOf(d: Date): Date {
+  readWeekStartPref(): number {
+    const v = parseInt(localStorage.getItem('mp_week_start') ?? '', 10);
+    return Number.isInteger(v) && v >= 0 && v <= 6 ? v : 1; // default Monday
+  }
+
+  setWeekStart(dow: number): void {
+    this.weekStartDow = dow;
+    localStorage.setItem('mp_week_start', String(dow));
+    // Re-align the week we're viewing to the new start day, then reload.
+    this.weekStart = this.weekStartOf(this.weekStart, dow);
+    this.loadWeek();
+  }
+
+  weekStartOf(d: Date, startDow: number): Date {
     const x = new Date(d);
-    const offset = (x.getDay() + 6) % 7; // 0 = Monday .. 6 = Sunday
-    x.setDate(x.getDate() - offset);
+    const diff = (x.getDay() - startDow + 7) % 7;
+    x.setDate(x.getDate() - diff);
     x.setHours(0, 0, 0, 0);
     return x;
   }
@@ -94,7 +119,10 @@ export class MealPlanComponent implements OnInit {
   }
 
   get isThisWeek(): boolean {
-    return this.weekStart.getTime() === this.mondayOf(new Date()).getTime();
+    return (
+      this.weekStart.getTime() ===
+      this.weekStartOf(new Date(), this.weekStartDow).getTime()
+    );
   }
 
   isToday(index: number): boolean {
@@ -111,7 +139,7 @@ export class MealPlanComponent implements OnInit {
   }
 
   goToThisWeek(): void {
-    this.weekStart = this.mondayOf(new Date());
+    this.weekStart = this.weekStartOf(new Date(), this.weekStartDow);
     this.loadWeek();
   }
 
