@@ -98,10 +98,11 @@ class TestProfile:
         assert r.status_code == 200
 
 
+@patch("services.user_service.meal_plan_table")
 @patch("services.user_service.recipe_table")
 @patch("services.user_service.table")
 class TestDelete:
-    def test_delete_me(self, mock_table, mock_recipe_table):
+    def test_delete_me(self, mock_table, mock_recipe_table, mock_meal_plan_table):
         mock_table.get_item.return_value = {"Item": _user_record()}
         mock_recipe_table.scan.return_value = {
             "Items": [{"recipe_id": "r1"}, {"recipe_id": "r2"}]
@@ -111,3 +112,6 @@ class TestDelete:
         assert r.json()["recipes_deleted"] == 2
         mock_table.delete_item.assert_called_once_with(Key={"user_id": TEST_USER_ID})
         assert mock_recipe_table.delete_item.call_count == 2
+        mock_meal_plan_table.delete_item.assert_called_once_with(
+            Key={"user_id": TEST_USER_ID}
+        )

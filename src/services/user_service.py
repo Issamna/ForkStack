@@ -18,6 +18,7 @@ logger = logging.getLogger("user_service")
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table(os.environ.get("USER_TABLE", "UserTable"))
 recipe_table = dynamodb.Table(os.environ.get("RECIPE_TABLE", "RecipeTable"))
+meal_plan_table = dynamodb.Table(os.environ.get("MEAL_PLAN_TABLE", "MealPlanTable"))
 
 router = APIRouter()
 
@@ -143,5 +144,6 @@ def delete_me(current_user_id: str = Depends(get_current_user)):
     for recipe in owned:
         recipe_table.delete_item(Key={"recipe_id": recipe["recipe_id"]})
 
+    meal_plan_table.delete_item(Key={"user_id": current_user_id})
     table.delete_item(Key={"user_id": current_user_id})
     return {"message": "Account deleted", "recipes_deleted": len(owned)}

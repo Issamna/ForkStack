@@ -20,11 +20,19 @@ export class MealPlanService {
 
   constructor(private http: HttpClient) {}
 
-  get(): Observable<{ entries: MealEntry[] }> {
-    return this.http.get<{ entries: MealEntry[] }>(this.apiUrl);
+  get(week: string): Observable<{ week: string; entries: MealEntry[] }> {
+    return this.http.get<{ week: string; entries: MealEntry[] }>(
+      `${this.apiUrl}?week=${week}`,
+    );
   }
 
-  save(entries: MealEntry[]): Observable<{ entries: MealEntry[] }> {
-    return this.http.put<{ entries: MealEntry[] }>(this.apiUrl, { entries });
+  save(
+    week: string,
+    entries: MealEntry[],
+  ): Observable<{ week: string; entries: MealEntry[] }> {
+    return this.http.put<{ week: string; entries: MealEntry[] }>(
+      `${this.apiUrl}?week=${week}`,
+      { entries },
+    );
   }
 }

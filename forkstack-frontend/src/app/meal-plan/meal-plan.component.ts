@@ -27,6 +27,7 @@ export class MealPlanComponent implements OnInit {
   entries: MealEntry[] = [];
   recipes: Recipe[] = [];
   loading = true;
+  weekStart: Date = this.mondayOf(new Date());
 
   // Add modal state
   showAdd = false;
@@ -46,14 +47,79 @@ export class MealPlanComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.mealPlan.get().subscribe({
+    this.loadWeek();
+    this.recipeService.getAll().subscribe((data) => (this.recipes = data));
+  }
+
+  loadWeek(): void {
+    this.loading = true;
+    this.mealPlan.get(this.weekIso).subscribe({
       next: (res) => {
         this.entries = res.entries || [];
         this.loading = false;
       },
-      error: () => (this.loading = false),
+      error: () => {
+        this.entries = [];
+        this.loading = false;
+      },
     });
-    this.recipeService.getAll().subscribe((data) => (this.recipes = data));
+  }
+
+  // --- Week navigation ---
+  mondayOf(d: Date): Date {
+    const x = new Date(d);
+    const offset = (x.getDay() + 6) % 7; // 0 = Monday .. 6 = Sunday
+    x.setDate(x.getDate() - offset);
+    x.setHours(0, 0, 0, 0);
+    return x;
+  }
+
+  get weekIso(): string {
+    const d = this.weekStart;
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${d.getFullYear()}-${m}-${day}`;
+  }
+
+  dayDate(index: number): Date {
+    const d = new Date(this.weekStart);
+    d.setDate(d.getDate() + index);
+    return d;
+  }
+
+  get weekLabel(): string {
+    const fmt = (d: Date) =>
+      d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    return `${fmt(this.weekStart)} – ${fmt(this.dayDate(6))}`;
+  }
+
+  get isThisWeek(): boolean {
+    return this.weekStart.getTime() === this.mondayOf(new Date()).getTime();
+  }
+
+  isToday(index: number): boolean {
+    const t = new Date();
+    t.setHours(0, 0, 0, 0);
+    return this.dayDate(index).getTime() === t.getTime();
+  }
+
+  shiftWeek(deltaWeeks: number): void {
+    const d = new Date(this.weekStart);
+    d.setDate(d.getDate() + deltaWeeks * 7);
+    this.weekStart = d;
+    this.loadWeek();
+  }
+
+  goToThisWeek(): void {
+    this.weekStart = this.mondayOf(new Date());
+    this.loadWeek();
+  }
+
+  clearWeek(): void {
+    if (!this.entries.length) return;
+    if (!confirm('Clear all meals planned for this week?')) return;
+    this.entries = [];
+    this.save();
   }
 
   entriesFor(dayKey: string | null): MealEntry[] {
@@ -129,7 +195,7 @@ export class MealPlanComponent implements OnInit {
   }
 
   private save(): void {
-    this.mealPlan.save(this.entries).subscribe();
+    this.mealPlan.save(this.weekIso, this.entries).subscribe();
   }
 
   thumb(entry: MealEntry): string {

@@ -1,10 +1,47 @@
 <div class="max-w-4xl mx-auto px-4 py-8">
-  <div class="flex items-center justify-between mb-6 gap-3">
-    <div>
-      <h1 class="heading-primary">Meal Plan</h1>
-      <p class="text-sm text-gray-500">This week</p>
-    </div>
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+    <h1 class="heading-primary">Meal Plan</h1>
     <button (click)="openAdd()" class="button-primary">+ Add to plan</button>
+  </div>
+
+  <!-- Week navigator -->
+  <div
+    class="flex flex-wrap items-center justify-between gap-3 mb-6 border-b border-gray-200 pb-4"
+  >
+    <div class="flex items-center gap-2">
+      <button
+        (click)="shiftWeek(-1)"
+        class="w-8 h-8 rounded-full border border-gray-300 text-textgray hover:bg-gray-100"
+        aria-label="Previous week"
+      >
+        ‹
+      </button>
+      <div class="text-center min-w-[8.5rem]">
+        <div class="font-semibold text-textgray">{{ weekLabel }}</div>
+        <div *ngIf="isThisWeek" class="text-xs text-gray-400">This week</div>
+      </div>
+      <button
+        (click)="shiftWeek(1)"
+        class="w-8 h-8 rounded-full border border-gray-300 text-textgray hover:bg-gray-100"
+        aria-label="Next week"
+      >
+        ›
+      </button>
+      <button
+        *ngIf="!isThisWeek"
+        (click)="goToThisWeek()"
+        class="ml-1 text-sm text-accent font-semibold hover:underline"
+      >
+        Today
+      </button>
+    </div>
+    <button
+      *ngIf="entries.length"
+      (click)="clearWeek()"
+      class="text-sm text-gray-500 hover:text-red-600"
+    >
+      Clear week
+    </button>
   </div>
 
   <div *ngIf="loading" class="text-center text-gray-400 py-12">Loading…</div>
@@ -53,10 +90,24 @@
       </section>
 
       <!-- Day rows -->
-      <section *ngFor="let d of days" class="border-t border-gray-200 py-3">
+      <section
+        *ngFor="let d of days; let i = index"
+        class="border-t border-gray-200 py-3"
+      >
         <div class="flex items-start gap-4">
-          <div class="w-20 sm:w-24 flex-shrink-0 pt-1 font-semibold text-textgray">
-            {{ d.label }}
+          <div class="w-24 sm:w-28 flex-shrink-0 pt-1">
+            <div
+              class="font-semibold"
+              [ngClass]="isToday(i) ? 'text-accent' : 'text-textgray'"
+            >
+              {{ d.label }}
+            </div>
+            <div
+              class="text-xs"
+              [ngClass]="isToday(i) ? 'text-accent' : 'text-gray-400'"
+            >
+              {{ dayDate(i) | date: "MMM d" }}
+            </div>
           </div>
           <div class="flex-1 flex flex-wrap gap-2 items-center">
             <span
@@ -90,49 +141,51 @@
       *ngIf="entry.recipe_id"
       [src]="thumb(entry)"
       alt=""
-      class="w-9 h-9 rounded object-cover flex-shrink-0"
+      class="w-10 h-10 rounded object-cover flex-shrink-0"
     />
     <span
       *ngIf="!entry.recipe_id"
-      class="w-9 h-9 rounded bg-gray-100 flex items-center justify-center flex-shrink-0"
+      class="w-10 h-10 rounded bg-gray-100 flex items-center justify-center flex-shrink-0"
       >🍴</span
     >
     <div class="min-w-0 flex-1">
-      <a
-        *ngIf="entry.recipe_id"
-        [routerLink]="['/recipes', entry.recipe_id]"
-        class="text-sm font-medium text-textgray hover:text-accent truncate block"
-        >{{ entry.title }}</a
-      >
-      <span
-        *ngIf="!entry.recipe_id"
-        class="text-sm font-medium text-textgray truncate block"
-        >{{ entry.title }}</span
-      >
-      <div class="flex flex-wrap gap-1 mt-0.5">
+      <div class="flex items-start gap-1">
+        <a
+          *ngIf="entry.recipe_id"
+          [routerLink]="['/recipes', entry.recipe_id]"
+          class="text-sm font-semibold text-textgray hover:text-accent leading-snug line-clamp-2 flex-1"
+          >{{ entry.title }}</a
+        >
+        <span
+          *ngIf="!entry.recipe_id"
+          class="text-sm font-semibold text-textgray leading-snug line-clamp-2 flex-1"
+          >{{ entry.title }}</span
+        >
+        <button
+          (click)="removeEntry(entry.id)"
+          class="text-gray-300 hover:text-red-600 text-lg leading-none flex-shrink-0"
+          aria-label="Remove"
+        >
+          ×
+        </button>
+      </div>
+      <div class="flex items-center flex-wrap gap-1 mt-1">
         <span *ngIf="entry.meal" class="badge">{{ mealLabel(entry.meal) }}</span>
         <span *ngIf="entry.who" class="badge">👤 {{ entry.who }}</span>
         <span *ngIf="entry.eat_out" class="badge">🍴 Out</span>
+        <select
+          [ngModel]="entry.day || ''"
+          (ngModelChange)="moveTo(entry, $event || null)"
+          class="ml-auto text-xs border border-gray-200 rounded px-1 py-0.5 text-gray-500 bg-white"
+          title="Move to day"
+          aria-label="Move to day"
+        >
+          <option value="">Anytime</option>
+          <option *ngFor="let d of days" [value]="d.key">
+            {{ d.label.slice(0, 3) }}
+          </option>
+        </select>
       </div>
-    </div>
-    <div class="flex items-center gap-1 flex-shrink-0">
-      <select
-        [ngModel]="entry.day || ''"
-        (ngModelChange)="moveTo(entry, $event || null)"
-        class="text-xs border border-gray-200 rounded px-1 py-0.5 text-gray-500 bg-white"
-        title="Move to day"
-        aria-label="Move to day"
-      >
-        <option value="">Anytime</option>
-        <option *ngFor="let d of days" [value]="d.key">{{ d.label.slice(0, 3) }}</option>
-      </select>
-      <button
-        (click)="removeEntry(entry.id)"
-        class="text-gray-300 hover:text-red-600 text-lg leading-none px-1"
-        aria-label="Remove"
-      >
-        ×
-      </button>
     </div>
   </div>
 </ng-template>

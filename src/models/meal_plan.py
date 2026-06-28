@@ -20,5 +20,6 @@ class MealPlanIn(BaseModel):
     entries: List[MealEntry] = []
 
 
-class MealPlanOut(MealPlanIn):
-    pass
+class MealPlanOut(BaseModel):
+    week: str  # ISO date of the week's Monday, e.g. "2026-06-22"
+    entries: List[MealEntry] = []
