@@ -32,6 +32,7 @@ def create(recipe: RecipeIn, current_user_id: str = Depends(get_current_user)):
         "owner_id": current_user_id,
         "import_source_url": recipe.import_source_url,
         "recipe_tags": recipe.recipe_tags,
+        "servings": recipe.servings,
     }
     table.put_item(Item=item)
     return item
@@ -110,6 +111,7 @@ def update(
         "owner_id": current_user_id,
         "import_source_url": recipe.import_source_url,
         "recipe_tags": recipe.recipe_tags,
+        "servings": recipe.servings,
     }
     table.put_item(Item=updated)
     return updated

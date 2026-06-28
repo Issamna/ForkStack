@@ -8,6 +8,8 @@ from bs4 import BeautifulSoup
 from fastapi import HTTPException
 from recipe_scrapers import scrape_html
 
+from utils.quantity import parse_servings
+
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
@@ -191,8 +193,15 @@ def _from_structured(html: str, url: str):
     except Exception:
         steps = [s for s in safe(scraper.instructions, "").split("\n") if s.strip()]
 
+    servings = None
+    try:
+        servings = parse_servings(scraper.yields())
+    except Exception:
+        servings = None
+
     return {
         "title": safe(scraper.title, "Untitled Recipe"),
+        "servings": servings,
         "ingredients": [parse_ingredient(i) for i in ingredients],
         "instructions": [
             {"step_number": i + 1, "text": step.strip()}

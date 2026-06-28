@@ -11,6 +11,7 @@ import { ReactiveFormsModule } from '@angular/forms';
 import { ForgotPasswordComponent } from './forgot-password/forgot-password.component';
 import { AccountComponent } from './account/account.component';
 import { MealPlanComponent } from './meal-plan/meal-plan.component';
+import { ShoppingListComponent } from './shopping-list/shopping-list.component';
 import { AuthInterceptor } from './auth.interceptor';
 
 @NgModule({
@@ -21,6 +22,7 @@ import { AuthInterceptor } from './auth.interceptor';
     ForgotPasswordComponent,
     AccountComponent,
     MealPlanComponent,
+    ShoppingListComponent,
   ],
   imports: [
     BrowserModule,

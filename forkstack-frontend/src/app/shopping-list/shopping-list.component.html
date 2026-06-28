@@ -1,0 +1,68 @@
+<div class="max-w-2xl mx-auto px-4 py-8">
+  <a
+    routerLink="/meal-plan"
+    class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-accent mb-4"
+  >
+    ‹ Back to meal plan
+  </a>
+
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+    <div>
+      <h1 class="heading-primary">Shopping List</h1>
+      <p class="text-sm text-gray-500">Week of {{ weekLabel }}</p>
+    </div>
+    <button (click)="generate()" [disabled]="generating" class="nav-button">
+      {{ generating ? "Refreshing…" : "↻ Regenerate" }}
+    </button>
+  </div>
+
+  <div *ngIf="loading" class="text-center text-gray-400 py-12">
+    Building your list…
+  </div>
+
+  <div
+    *ngIf="!loading && !items.length"
+    class="text-center py-16 text-gray-500 max-w-sm mx-auto"
+  >
+    <div class="text-4xl mb-3">🛒</div>
+    <p class="font-semibold text-textgray mb-1">Nothing to shop for</p>
+    <p class="text-sm">
+      Add some recipes to this week’s meal plan, then come back and regenerate.
+      (Eating-out and quick items are skipped.)
+    </p>
+  </div>
+
+  <div *ngIf="!loading && items.length">
+    <p class="text-sm text-gray-500 mb-3">
+      {{ remaining }} of {{ items.length }} still to get
+    </p>
+    <ul class="bg-white rounded-lg border border-gray-200 divide-y">
+      <li
+        *ngFor="let item of items"
+        class="flex items-start gap-3 px-4 py-2.5"
+      >
+        <input
+          type="checkbox"
+          [checked]="item.checked"
+          (change)="toggle(item)"
+          class="mt-1 h-4 w-4 flex-shrink-0 accent-accent cursor-pointer"
+        />
+        <div class="min-w-0 flex-1" [class.opacity-50]="item.checked">
+          <div class="text-sm" [class.line-through]="item.checked">
+            <span class="font-semibold text-textgray"
+              >{{ item.quantity }} {{ item.unit }}</span
+            >
+            {{ item.name }}
+          </div>
+          <div
+            *ngIf="item.sources?.length"
+            class="text-xs text-gray-400 truncate"
+            [title]="item.sources.join(', ')"
+          >
+            for {{ item.sources.join(", ") }}
+          </div>
+        </div>
+      </li>
+    </ul>
+  </div>
+</div>

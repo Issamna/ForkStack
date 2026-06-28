@@ -23,6 +23,7 @@ export interface Recipe {
   owner_id?: string;
   import_source_url?: string;
   recipe_tags?: string[];
+  servings?: number | null;
 }
 
 @Injectable({

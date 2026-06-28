@@ -51,6 +51,7 @@ export class MealPlanComponent implements OnInit {
   newMeal = '';
   newWho = '';
   newEatOut = false;
+  newServings: number | null = null;
 
   constructor(
     private mealPlan: MealPlanService,
@@ -175,7 +176,13 @@ export class MealPlanComponent implements OnInit {
     this.newMeal = '';
     this.newWho = '';
     this.newEatOut = false;
+    this.newServings = null;
     this.showAdd = true;
+  }
+
+  selectRecipe(r: Recipe): void {
+    this.selectedRecipe = r;
+    this.newServings = r.servings ?? null;
   }
 
   canAdd(): boolean {
@@ -203,6 +210,7 @@ export class MealPlanComponent implements OnInit {
         recipe_id: this.selectedRecipe.recipe_id,
         title: this.selectedRecipe.title,
         tags: this.selectedRecipe.recipe_tags || [],
+        servings: this.newServings || null,
       };
     } else {
       entry = { ...base, title: this.quickLabel.trim(), tags: [] };

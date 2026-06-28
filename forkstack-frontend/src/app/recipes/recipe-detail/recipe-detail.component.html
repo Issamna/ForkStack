@@ -104,6 +104,9 @@
       {{ adding ? "Adding…" : "+ Add to my cookbook" }}
     </button>
   </div>
+  <p *ngIf="recipe.servings" class="text-sm text-gray-500 mb-2">
+    Serves {{ recipe.servings }}
+  </p>
   <div *ngIf="recipe.recipe_tags?.length" class="flex flex-wrap gap-2 mb-4">
     <span
       *ngFor="let tag of recipe.recipe_tags"

@@ -11,6 +11,7 @@ export interface MealEntry {
   meal?: string | null; // 'breakfast' | 'lunch' | 'dinner' | 'snack'
   who?: string | null;
   eat_out: boolean;
+  servings?: number | null;
 }
 
 @Injectable({ providedIn: 'root' })

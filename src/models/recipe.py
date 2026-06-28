@@ -22,6 +22,7 @@ class RecipeIn(BaseModel):
     owner_id: Optional[str] = None
     import_source_url: Optional[str] = None
     recipe_tags: Optional[list[str]] = []
+    servings: Optional[int] = None
 
     @field_validator("import_source_url")
     def validate_url(cls, v):

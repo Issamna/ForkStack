@@ -12,6 +12,7 @@ from services import (
     tag_service,
     ingredient_service,
     meal_plan_service,
+    shopping_list_service,
 )
 
 logger = logging.getLogger()
@@ -29,6 +30,9 @@ app.include_router(user_service.router, prefix="/users", tags=["users"])
 app.include_router(tag_service.router, prefix="/tags", tags=["tags"])
 app.include_router(ingredient_service.router, prefix="/ingredients", tags=["ingredients"])
 app.include_router(meal_plan_service.router, prefix="/meal-plan", tags=["meal-plan"])
+app.include_router(
+    shopping_list_service.router, prefix="/shopping-list", tags=["shopping-list"]
+)
 
 
 @app.get("/openapi.json")

@@ -98,11 +98,14 @@ class TestProfile:
         assert r.status_code == 200
 
 
+@patch("services.user_service.shopping_list_table")
 @patch("services.user_service.meal_plan_table")
 @patch("services.user_service.recipe_table")
 @patch("services.user_service.table")
 class TestDelete:
-    def test_delete_me(self, mock_table, mock_recipe_table, mock_meal_plan_table):
+    def test_delete_me(
+        self, mock_table, mock_recipe_table, mock_meal_plan_table, mock_shopping_table
+    ):
         mock_table.get_item.return_value = {"Item": _user_record()}
         mock_recipe_table.scan.return_value = {
             "Items": [{"recipe_id": "r1"}, {"recipe_id": "r2"}]

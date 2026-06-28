@@ -14,6 +14,7 @@ class MealEntry(BaseModel):
     meal: Optional[str] = None  # breakfast | lunch | dinner | snack
     who: Optional[str] = None
     eat_out: bool = False
+    servings: Optional[int] = None  # desired servings for this planned meal
 
 
 class MealPlanIn(BaseModel):

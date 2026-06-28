@@ -14,6 +14,7 @@ export class RecipeFormComponent implements OnInit {
   editing = false;
   recipe_id: string | null = null;
   is_shareable = false;
+  servings: number | null = null;
   recipeUrl = '';
   showParser = false;
   isParsing = false;
@@ -48,6 +49,7 @@ export class RecipeFormComponent implements OnInit {
           this.ingredients = recipe.ingredients;
           this.instructions = recipe.instructions;
           this.is_shareable = recipe.is_shareable;
+          this.servings = recipe.servings ?? null;
           this.recipeUrl = recipe.import_source_url || '';
           this.recipe_tags = recipe.recipe_tags || [];
         });
@@ -103,6 +105,7 @@ export class RecipeFormComponent implements OnInit {
     this.recipeService.parseUrl(this.recipeUrl).subscribe({
       next: (data) => {
         this.title = data.title;
+        if (data.servings != null) this.servings = data.servings;
         this.ingredients = data.ingredients || [
           { name: '', quantity: '', measurement_type: '' },
         ];
@@ -147,6 +150,7 @@ export class RecipeFormComponent implements OnInit {
       ingredients,
       instructions,
       is_shareable: this.is_shareable,
+      servings: this.servings || null,
       recipe_tags: this.recipe_tags,
     };
 

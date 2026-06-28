@@ -1,7 +1,16 @@
 <div class="max-w-4xl mx-auto px-4 py-8">
   <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
     <h1 class="heading-primary">Meal Plan</h1>
-    <button (click)="openAdd()" class="button-primary">+ Add to plan</button>
+    <div class="flex gap-2">
+      <a
+        [routerLink]="['/shopping-list']"
+        [queryParams]="{ week: weekIso }"
+        class="nav-button"
+      >
+        🛒 Shopping list
+      </a>
+      <button (click)="openAdd()" class="button-primary">+ Add to plan</button>
+    </div>
   </div>
 
   <!-- Week navigator -->
@@ -186,6 +195,7 @@
       </div>
       <div class="flex items-center flex-wrap gap-1 mt-1">
         <span *ngIf="entry.meal" class="badge">{{ mealLabel(entry.meal) }}</span>
+        <span *ngIf="entry.servings" class="badge">serves {{ entry.servings }}</span>
         <span *ngIf="entry.who" class="badge">👤 {{ entry.who }}</span>
         <span *ngIf="entry.eat_out" class="badge">🍴 Out</span>
         <select
@@ -244,7 +254,7 @@
       <div class="max-h-48 overflow-y-auto border border-gray-200 rounded divide-y">
         <button
           *ngFor="let r of filteredRecipes()"
-          (click)="selectedRecipe = r"
+          (click)="selectRecipe(r)"
           class="flex items-center gap-2 w-full text-left px-2 py-1.5 hover:bg-gray-50"
           [ngClass]="selectedRecipe?.recipe_id === r.recipe_id ? 'bg-gray-100' : ''"
         >
@@ -276,6 +286,19 @@
         placeholder="e.g. Pizza out, School lunch, Leftovers"
         class="form-input w-full"
       />
+    </div>
+
+    <!-- Servings (recipes only) -->
+    <div *ngIf="addMode === 'recipe'" class="mt-4 flex items-center gap-2">
+      <label class="text-sm text-textgray">Servings</label>
+      <input
+        type="number"
+        min="1"
+        [(ngModel)]="newServings"
+        placeholder="—"
+        class="form-input w-24"
+      />
+      <span class="text-xs text-gray-400">scales the shopping list</span>
     </div>
 
     <!-- Optional details -->

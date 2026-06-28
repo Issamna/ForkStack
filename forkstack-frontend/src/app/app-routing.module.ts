@@ -5,6 +5,7 @@ import { RegisterComponent } from './register/register.component';
 import { ForgotPasswordComponent } from './forgot-password/forgot-password.component';
 import { AccountComponent } from './account/account.component';
 import { MealPlanComponent } from './meal-plan/meal-plan.component';
+import { ShoppingListComponent } from './shopping-list/shopping-list.component';
 import { AuthGuard } from './auth.guard';
 
 const routes: Routes = [
@@ -20,6 +21,11 @@ const routes: Routes = [
   { path: 'forgot-password', component: ForgotPasswordComponent },
   { path: 'account', component: AccountComponent, canActivate: [AuthGuard] },
   { path: 'meal-plan', component: MealPlanComponent, canActivate: [AuthGuard] },
+  {
+    path: 'shopping-list',
+    component: ShoppingListComponent,
+    canActivate: [AuthGuard],
+  },
 ];
 
 @NgModule({
