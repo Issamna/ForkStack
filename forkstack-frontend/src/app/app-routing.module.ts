@@ -4,6 +4,7 @@ import { LoginComponent } from './login/login.component';
 import { RegisterComponent } from './register/register.component';
 import { ForgotPasswordComponent } from './forgot-password/forgot-password.component';
 import { AccountComponent } from './account/account.component';
+import { MealPlanComponent } from './meal-plan/meal-plan.component';
 import { AuthGuard } from './auth.guard';
 
 const routes: Routes = [
@@ -18,6 +19,7 @@ const routes: Routes = [
   { path: 'register', component: RegisterComponent },
   { path: 'forgot-password', component: ForgotPasswordComponent },
   { path: 'account', component: AccountComponent, canActivate: [AuthGuard] },
+  { path: 'meal-plan', component: MealPlanComponent, canActivate: [AuthGuard] },
 ];
 
 @NgModule({

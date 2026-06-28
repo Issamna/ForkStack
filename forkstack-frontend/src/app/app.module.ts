@@ -10,6 +10,7 @@ import { RegisterComponent } from './register/register.component';
 import { ReactiveFormsModule } from '@angular/forms';
 import { ForgotPasswordComponent } from './forgot-password/forgot-password.component';
 import { AccountComponent } from './account/account.component';
+import { MealPlanComponent } from './meal-plan/meal-plan.component';
 import { AuthInterceptor } from './auth.interceptor';
 
 @NgModule({
@@ -19,6 +20,7 @@ import { AuthInterceptor } from './auth.interceptor';
     RegisterComponent,
     ForgotPasswordComponent,
     AccountComponent,
+    MealPlanComponent,
   ],
   imports: [
     BrowserModule,

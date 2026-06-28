@@ -1,0 +1,252 @@
+<div class="max-w-4xl mx-auto px-4 py-8">
+  <div class="flex items-center justify-between mb-6 gap-3">
+    <div>
+      <h1 class="heading-primary">Meal Plan</h1>
+      <p class="text-sm text-gray-500">This week</p>
+    </div>
+    <button (click)="openAdd()" class="button-primary">+ Add to plan</button>
+  </div>
+
+  <div *ngIf="loading" class="text-center text-gray-400 py-12">Loading…</div>
+
+  <ng-container *ngIf="!loading">
+    <!-- Empty state -->
+    <div
+      *ngIf="entries.length === 0"
+      class="text-center py-16 max-w-md mx-auto"
+    >
+      <div class="text-5xl mb-3">🗓️</div>
+      <p class="text-lg font-semibold text-textgray mb-1">Nothing planned yet</p>
+      <p class="text-sm text-gray-500 mb-6">
+        Add what you’re cooking or eating this week — recipes from your cookbook
+        or quick items like “Pizza out”.
+      </p>
+      <button (click)="openAdd()" class="button-primary">+ Add to plan</button>
+    </div>
+
+    <div *ngIf="entries.length">
+      <!-- Anytime this week -->
+      <section class="mb-6">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-sm font-bold text-textgray uppercase tracking-wide">
+            ★ Anytime this week
+          </h2>
+          <button
+            (click)="openAdd(null)"
+            class="text-accent text-sm font-semibold hover:underline"
+          >
+            + Add
+          </button>
+        </div>
+        <div *ngIf="anytime.length; else emptyLane" class="flex flex-wrap gap-2">
+          <ng-container *ngFor="let e of anytime">
+            <ng-container
+              *ngTemplateOutlet="card; context: { entry: e }"
+            ></ng-container>
+          </ng-container>
+        </div>
+        <ng-template #emptyLane>
+          <p class="text-xs text-gray-400">
+            Loose ideas with no set day land here.
+          </p>
+        </ng-template>
+      </section>
+
+      <!-- Day rows -->
+      <section *ngFor="let d of days" class="border-t border-gray-200 py-3">
+        <div class="flex items-start gap-4">
+          <div class="w-20 sm:w-24 flex-shrink-0 pt-1 font-semibold text-textgray">
+            {{ d.label }}
+          </div>
+          <div class="flex-1 flex flex-wrap gap-2 items-center">
+            <span
+              *ngIf="!entriesFor(d.key).length"
+              class="text-xs text-gray-300"
+            >
+              nothing planned
+            </span>
+            <ng-container *ngFor="let e of entriesFor(d.key)">
+              <ng-container
+                *ngTemplateOutlet="card; context: { entry: e }"
+              ></ng-container>
+            </ng-container>
+            <button
+              (click)="openAdd(d.key)"
+              class="text-gray-400 hover:text-accent hover:border-accent text-sm border border-dashed border-gray-300 rounded px-2 py-1"
+            >
+              + add
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </ng-container>
+</div>
+
+<!-- Reusable entry card -->
+<ng-template #card let-entry="entry">
+  <div class="meal-card">
+    <img
+      *ngIf="entry.recipe_id"
+      [src]="thumb(entry)"
+      alt=""
+      class="w-9 h-9 rounded object-cover flex-shrink-0"
+    />
+    <span
+      *ngIf="!entry.recipe_id"
+      class="w-9 h-9 rounded bg-gray-100 flex items-center justify-center flex-shrink-0"
+      >🍴</span
+    >
+    <div class="min-w-0 flex-1">
+      <a
+        *ngIf="entry.recipe_id"
+        [routerLink]="['/recipes', entry.recipe_id]"
+        class="text-sm font-medium text-textgray hover:text-accent truncate block"
+        >{{ entry.title }}</a
+      >
+      <span
+        *ngIf="!entry.recipe_id"
+        class="text-sm font-medium text-textgray truncate block"
+        >{{ entry.title }}</span
+      >
+      <div class="flex flex-wrap gap-1 mt-0.5">
+        <span *ngIf="entry.meal" class="badge">{{ mealLabel(entry.meal) }}</span>
+        <span *ngIf="entry.who" class="badge">👤 {{ entry.who }}</span>
+        <span *ngIf="entry.eat_out" class="badge">🍴 Out</span>
+      </div>
+    </div>
+    <div class="flex items-center gap-1 flex-shrink-0">
+      <select
+        [ngModel]="entry.day || ''"
+        (ngModelChange)="moveTo(entry, $event || null)"
+        class="text-xs border border-gray-200 rounded px-1 py-0.5 text-gray-500 bg-white"
+        title="Move to day"
+        aria-label="Move to day"
+      >
+        <option value="">Anytime</option>
+        <option *ngFor="let d of days" [value]="d.key">{{ d.label.slice(0, 3) }}</option>
+      </select>
+      <button
+        (click)="removeEntry(entry.id)"
+        class="text-gray-300 hover:text-red-600 text-lg leading-none px-1"
+        aria-label="Remove"
+      >
+        ×
+      </button>
+    </div>
+  </div>
+</ng-template>
+
+<!-- Add modal -->
+<div
+  *ngIf="showAdd"
+  class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4"
+>
+  <div class="bg-white rounded-lg p-6 w-full max-w-md max-h-[85vh] overflow-y-auto">
+    <h3 class="text-lg font-semibold text-textgray mb-4">Add to meal plan</h3>
+
+    <div class="inline-flex bg-gray-200 rounded-full p-1 mb-4">
+      <button
+        (click)="addMode = 'recipe'"
+        class="px-3 py-1 text-sm rounded-full transition"
+        [ngClass]="
+          addMode === 'recipe' ? 'bg-white shadow font-semibold' : 'text-gray-500'
+        "
+      >
+        From my recipes
+      </button>
+      <button
+        (click)="addMode = 'item'"
+        class="px-3 py-1 text-sm rounded-full transition"
+        [ngClass]="
+          addMode === 'item' ? 'bg-white shadow font-semibold' : 'text-gray-500'
+        "
+      >
+        Quick item
+      </button>
+    </div>
+
+    <!-- Recipe picker -->
+    <div *ngIf="addMode === 'recipe'">
+      <input
+        [(ngModel)]="recipeSearch"
+        placeholder="Search your recipes"
+        class="form-input w-full mb-2"
+      />
+      <div class="max-h-48 overflow-y-auto border border-gray-200 rounded divide-y">
+        <button
+          *ngFor="let r of filteredRecipes()"
+          (click)="selectedRecipe = r"
+          class="flex items-center gap-2 w-full text-left px-2 py-1.5 hover:bg-gray-50"
+          [ngClass]="selectedRecipe?.recipe_id === r.recipe_id ? 'bg-gray-100' : ''"
+        >
+          <img
+            [src]="imageHelper.getImageForTags(r.recipe_tags)"
+            alt=""
+            class="w-7 h-7 rounded object-cover flex-shrink-0"
+          />
+          <span class="text-sm truncate">{{ r.title }}</span>
+          <span
+            *ngIf="selectedRecipe?.recipe_id === r.recipe_id"
+            class="ml-auto text-accent font-bold"
+            >✓</span
+          >
+        </button>
+        <p
+          *ngIf="!filteredRecipes().length"
+          class="text-sm text-gray-400 px-2 py-3 text-center"
+        >
+          No recipes found.
+        </p>
+      </div>
+    </div>
+
+    <!-- Quick item -->
+    <div *ngIf="addMode === 'item'">
+      <input
+        [(ngModel)]="quickLabel"
+        placeholder="e.g. Pizza out, School lunch, Leftovers"
+        class="form-input w-full"
+      />
+    </div>
+
+    <!-- Optional details -->
+    <div class="grid grid-cols-2 gap-3 mt-4">
+      <label class="text-sm text-textgray"
+        >Day
+        <select [(ngModel)]="newDay" class="form-input w-full mt-1">
+          <option value="">Anytime</option>
+          <option *ngFor="let d of days" [value]="d.key">{{ d.label }}</option>
+        </select>
+      </label>
+      <label class="text-sm text-textgray"
+        >Meal
+        <select [(ngModel)]="newMeal" class="form-input w-full mt-1">
+          <option value="">—</option>
+          <option *ngFor="let m of meals" [value]="m">{{ mealLabel(m) }}</option>
+        </select>
+      </label>
+      <label class="text-sm text-textgray"
+        >Who (optional)
+        <input [(ngModel)]="newWho" placeholder="e.g. Kids" class="form-input w-full mt-1" />
+      </label>
+      <label class="flex items-center gap-2 text-sm text-textgray mt-6">
+        <input type="checkbox" [(ngModel)]="newEatOut" />
+        Eating out
+      </label>
+    </div>
+
+    <div class="flex justify-end gap-2 mt-6">
+      <button (click)="showAdd = false" class="px-4 py-2 rounded hover:bg-gray-100">
+        Cancel
+      </button>
+      <button
+        (click)="confirmAdd()"
+        [disabled]="!canAdd()"
+        class="button-primary disabled:opacity-50"
+      >
+        Add
+      </button>
+    </div>
+  </div>
+</div>

@@ -48,6 +48,14 @@ class AppStack(Stack):
             ),
             removal_policy=RemovalPolicy.RETAIN,
         )
+        meal_plan_table = dynamodb.Table(
+            self,
+            "MealPlanTable",
+            partition_key=dynamodb.Attribute(
+                name="user_id", type=dynamodb.AttributeType.STRING
+            ),
+            removal_policy=RemovalPolicy.RETAIN,
+        )
 
         # JWT signing key -- auto-generated, never checked into source.
         jwt_secret = secretsmanager.Secret(
@@ -87,6 +95,7 @@ class AppStack(Stack):
                 "USER_TABLE": user_table.table_name,
                 "RECIPE_TAG_TABLE": recipe_tag_table.table_name,
                 "INGREDIENT_TABLE": ingredient_table.table_name,
+                "MEAL_PLAN_TABLE": meal_plan_table.table_name,
                 "JWT_SECRET_ARN": jwt_secret.secret_arn,
                 "RECAPTCHA_SECRET_ARN": recaptcha_secret.secret_arn,
                 "ENFORCE_RECAPTCHA": "false",
@@ -98,6 +107,7 @@ class AppStack(Stack):
         user_table.grant_read_write_data(lambda_fn)
         recipe_tag_table.grant_read_write_data(lambda_fn)
         ingredient_table.grant_read_write_data(lambda_fn)
+        meal_plan_table.grant_read_write_data(lambda_fn)
         jwt_secret.grant_read(lambda_fn)
         recaptcha_secret.grant_read(lambda_fn)
 
