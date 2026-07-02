@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 
 from api import app
 from utils.auth import create_access_token
+from utils.categories import categorize
 from utils.ingredients import canonical_name, canonical_unit, clean_name
 from utils.quantity import format_quantity, parse_quantity, parse_servings
 
@@ -80,6 +81,32 @@ class TestCanonicalization:
         assert canonical_unit("") == ""
 
 
+class TestCategorize:
+    def test_basic_aisles(self):
+        assert categorize("medium onion (diced)") == "produce"
+        assert categorize("boneless, skinless chicken breasts") == "meat"
+        assert categorize("shredded cheddar cheese") == "dairy"
+        assert categorize("salt") == "spices"
+        assert categorize("paper towels") == "household"
+        assert categorize("all-purpose flour") == "pantry"
+        assert categorize("unicorn dust") == "other"
+
+    def test_phrases_beat_tokens(self):
+        assert categorize("bell pepper") == "produce"
+        assert categorize("black pepper") == "spices"
+        assert categorize("olive oil") == "pantry"
+        assert categorize("chicken broth") == "pantry"  # not meat
+        assert categorize("sour cream") == "dairy"
+        assert categorize("ice cream") == "frozen"
+
+    def test_head_noun_wins(self):
+        assert categorize("goat cheese") == "dairy"
+
+    def test_dried_rule(self):
+        assert categorize("dried basil") == "spices"
+        assert categorize("dried apricots") == "pantry"
+
+
 @patch("services.shopping_list_service.recipe_table")
 @patch("services.shopping_list_service.meal_plan_table")
 @patch("services.shopping_list_service.table")
@@ -117,6 +144,9 @@ class TestGenerate:
         assert items["garlic"]["quantity"] == "1.5"
         # salt has no number -> blank quantity, still listed
         assert items["salt"]["quantity"] == ""
+        # aisle categories assigned
+        assert onion["category"] == "produce"
+        assert items["salt"]["category"] == "spices"
 
     def test_preserves_custom_and_removed(self, mock_table, mock_mp, mock_recipe):
         entries = [{"id": "e2", "recipe_id": "r2", "title": "Salsa"}]
@@ -134,9 +164,10 @@ class TestGenerate:
         r = client.post(f"/shopping-list/generate?week={WEEK}", headers=AUTH)
         assert r.status_code == 200
         items = {i["name"]: i for i in r.json()["items"]}
-        # user-added item survives regenerate untouched
+        # user-added item survives regenerate untouched (and gets an aisle)
         assert items["paper towels"]["custom"] is True
         assert items["paper towels"]["quantity"] == "2"
+        assert items["paper towels"]["category"] == "household"
         # removed + checked state carries over to the regenerated onion line
         assert items["onion"]["removed"] is True
         assert items["onion"]["checked"] is True

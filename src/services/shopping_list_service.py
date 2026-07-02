@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Query
 
 from dependencies import get_current_user
 from models.shopping_list import ShoppingListIn, ShoppingListOut
+from utils.categories import categorize
 from utils.ingredients import canonical_name, canonical_unit, clean_name
 from utils.quantity import format_quantity, parse_quantity, parse_servings
 
@@ -40,7 +41,7 @@ def _generate_items(user_id: str, week: str, prev_items: list) -> list:
     prev_state: dict = {}
     for i in prev_items:
         if i.get("custom"):
-            customs.append(i)
+            customs.append({**i, "category": categorize(i.get("name", ""))})
             continue
         key = (canonical_name(i.get("name", "")), canonical_unit(i.get("unit", "")))
         state = prev_state.setdefault(key, {"checked": False, "removed": False})
@@ -97,6 +98,7 @@ def _generate_items(user_id: str, week: str, prev_items: list) -> list:
             "checked": prev_state.get(key, {}).get("checked", False),
             "custom": False,
             "removed": prev_state.get(key, {}).get("removed", False),
+            "category": categorize(v["name"]),
         }
         for key, v in agg.items()
     ]
@@ -123,6 +125,10 @@ def save_list(
     week: str = WeekParam,
     user_id: str = Depends(get_current_user),
 ):
-    items = [i.dict() for i in payload.items]
+    # Categories are always assigned server-side so user-added items get an
+    # aisle the moment they're saved.
+    items = [
+        {**i.dict(), "category": categorize(i.name)} for i in payload.items
+    ]
     _save_week(user_id, week, items)
     return {"week": week, "items": items}

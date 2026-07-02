@@ -11,6 +11,7 @@ class ShoppingItem(BaseModel):
     checked: bool = False
     custom: bool = False  # user-added item; survives regenerate untouched
     removed: bool = False  # hidden from the list; stays hidden on regenerate
+    category: str = "other"  # grocery aisle, assigned server-side
 
 
 class ShoppingListIn(BaseModel):

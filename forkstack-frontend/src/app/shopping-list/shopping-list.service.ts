@@ -10,6 +10,7 @@ export interface ShoppingItem {
   checked: boolean;
   custom?: boolean;
   removed?: boolean;
+  category?: string;
 }
 
 interface ShoppingList {

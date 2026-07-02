@@ -49,7 +49,7 @@ export class ShoppingListComponent implements OnInit {
 
   toggle(item: ShoppingItem): void {
     item.checked = !item.checked;
-    this.shopping.save(this.week, this.items).subscribe();
+    this.save();
   }
 
   remove(item: ShoppingItem): void {
@@ -60,12 +60,19 @@ export class ShoppingListComponent implements OnInit {
       // Recipe items are hidden so a regenerate doesn't bring them back.
       item.removed = true;
     }
-    this.shopping.save(this.week, this.items).subscribe();
+    this.save();
   }
 
   restoreRemoved(): void {
     this.items.forEach((i) => (i.removed = false));
-    this.shopping.save(this.week, this.items).subscribe();
+    this.save();
+  }
+
+  private save(): void {
+    // The server assigns categories, so sync back its version of the list.
+    this.shopping.save(this.week, this.items).subscribe((res) => {
+      if (res.items) this.items = res.items;
+    });
   }
 
   addItem(): void {
@@ -86,7 +93,34 @@ export class ShoppingListComponent implements OnInit {
       a.name.toLowerCase().localeCompare(b.name.toLowerCase()),
     );
     this.newItem = '';
-    this.shopping.save(this.week, this.items).subscribe();
+    this.save();
+  }
+
+  readonly categoryOrder = [
+    'produce', 'meat', 'dairy', 'bakery', 'pantry',
+    'spices', 'frozen', 'beverages', 'household', 'other',
+  ];
+  readonly categoryLabels: { [key: string]: string } = {
+    produce: 'Produce',
+    meat: 'Meat & Seafood',
+    dairy: 'Dairy & Eggs',
+    bakery: 'Bakery',
+    pantry: 'Pantry',
+    spices: 'Spices & Seasonings',
+    frozen: 'Frozen',
+    beverages: 'Beverages',
+    household: 'Household',
+    other: 'Other',
+  };
+
+  get grouped(): { label: string; items: ShoppingItem[] }[] {
+    const visible = this.visible;
+    return this.categoryOrder
+      .map((c) => ({
+        label: this.categoryLabels[c],
+        items: visible.filter((i) => (i.category || 'other') === c),
+      }))
+      .filter((g) => g.items.length);
   }
 
   get visible(): ShoppingItem[] {

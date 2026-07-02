@@ -40,8 +40,14 @@
       *ngIf="visible.length"
       class="bg-white rounded-lg border border-gray-200 divide-y"
     >
+      <ng-container *ngFor="let group of grouped">
       <li
-        *ngFor="let item of visible"
+        class="px-4 py-1.5 bg-gray-50 text-[11px] font-semibold uppercase tracking-wider text-gray-400"
+      >
+        {{ group.label }}
+      </li>
+      <li
+        *ngFor="let item of group.items"
         class="group flex items-start gap-3 px-4 py-2.5"
       >
         <input
@@ -78,6 +84,7 @@
           ✕
         </button>
       </li>
+      </ng-container>
     </ul>
 
     <form (ngSubmit)="addItem()" class="flex gap-2 mt-4">
