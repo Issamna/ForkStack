@@ -108,7 +108,7 @@ class AppStack(Stack):
                 "JWT_SECRET_ARN": jwt_secret.secret_arn,
                 "RECAPTCHA_SECRET_ARN": recaptcha_secret.secret_arn,
                 "ENFORCE_RECAPTCHA": "false",
-                "ALLOWED_ORIGINS": "https://issamna.github.io,http://localhost:4200",
+                "ALLOWED_ORIGINS": "https://issamna.github.io,https://ds0s04vkdxys7.cloudfront.net,http://localhost:4200",
             },
         )
 

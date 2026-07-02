@@ -2,6 +2,7 @@
 
 # Compiled output
 /dist
+/dist-cloudfront
 /tmp
 /out-tsc
 /bazel-out

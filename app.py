@@ -4,9 +4,11 @@ import os
 import aws_cdk as cdk
 
 from infrastructure.app_stack import AppStack
+from infrastructure.frontend_stack import FrontendStack
 
 
 app = cdk.App()
+FrontendStack(app, "FrontendStack")
 AppStack(app, "AppStack",
     # If you don't specify 'env', this stack will be environment-agnostic.
     # Account/Region-dependent features and context lookups will not work,
