@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 
 from api import app
 from utils.auth import create_access_token
+from utils.ingredients import canonical_name, canonical_unit, clean_name
 from utils.quantity import format_quantity, parse_quantity, parse_servings
 
 client = TestClient(app)
@@ -19,6 +20,7 @@ PASTA = {
         {"name": "roma tomatoes", "quantity": "2", "measurement_type": ""},
         {"name": "garlic", "quantity": "1", "measurement_type": "clove"},
         {"name": "salt", "quantity": "", "measurement_type": ""},
+        {"name": "medium onion (diced)", "quantity": "1", "measurement_type": ""},
     ],
 }
 SALSA = {
@@ -27,7 +29,7 @@ SALSA = {
     "servings": 4,
     "ingredients": [
         {"name": "Roma Tomatoes", "quantity": "3", "measurement_type": ""},
-        {"name": "onion", "quantity": "1", "measurement_type": ""},
+        {"name": "onion , chopped", "quantity": "1", "measurement_type": ""},
     ],
 }
 
@@ -46,6 +48,36 @@ class TestQuantityUtils:
         assert parse_servings("4 servings") == 4
         assert format_quantity(5.0) == "5"
         assert format_quantity(1.5) == "1.5"
+
+
+class TestCanonicalization:
+    def test_prep_noise_stripped(self):
+        assert canonical_name("medium onion (diced)") == "onion"
+        assert canonical_name("onion , chopped") == "onion"
+        assert canonical_name("finely chopped garlic") == "garlic"
+        assert canonical_name("salt, to taste") == "salt"
+        assert canonical_name("salt to taste") == "salt"
+
+    def test_singularizes_for_matching_only(self):
+        assert canonical_name("Roma Tomatoes") == "roma tomato"
+        assert canonical_name("roma tomato") == "roma tomato"
+        assert clean_name("Roma Tomatoes") == "roma tomatoes"  # display keeps plural
+        assert canonical_name("berries") == "berry"
+
+    def test_meaningful_words_kept(self):
+        # These change what you buy — they must NOT merge with the bare word.
+        assert canonical_name("boneless, skinless chicken breasts") == \
+            "boneless, skinless chicken breast"
+        assert canonical_name("dried basil") == "dried basil"
+        assert canonical_name("ground beef") == "ground beef"
+        assert canonical_name("whole milk") == "whole milk"
+
+    def test_units(self):
+        assert canonical_unit("tablespoons") == "tbsp"
+        assert canonical_unit("Tablespoon") == "tbsp"
+        assert canonical_unit("tbsp") == "tbsp"
+        assert canonical_unit("cloves") == "clove"
+        assert canonical_unit("") == ""
 
 
 @patch("services.shopping_list_service.recipe_table")
@@ -76,10 +108,38 @@ class TestGenerate:
         tom = items["roma tomatoes"]
         assert tom["quantity"] == "6"
         assert sorted(tom["sources"]) == ["Salsa", "Tomato Pasta"]
+        # "medium onion (diced)" + "onion , chopped" pool onto one line:
+        # 1 * 1.5 (scaled pasta) + 1 (salsa) = 2.5
+        onion = items["onion"]
+        assert onion["quantity"] == "2.5"
+        assert sorted(onion["sources"]) == ["Salsa", "Tomato Pasta"]
         # garlic scaled 1 -> 1.5
         assert items["garlic"]["quantity"] == "1.5"
         # salt has no number -> blank quantity, still listed
         assert items["salt"]["quantity"] == ""
+
+    def test_preserves_custom_and_removed(self, mock_table, mock_mp, mock_recipe):
+        entries = [{"id": "e2", "recipe_id": "r2", "title": "Salsa"}]
+        self._wire(mock_table, mock_mp, mock_recipe, entries)
+        prev = [
+            {"name": "paper towels", "unit": "", "quantity": "2",
+             "sources": [], "checked": False, "custom": True, "removed": False},
+            {"name": "onion", "unit": "", "quantity": "1",
+             "sources": ["Salsa"], "checked": True, "custom": False,
+             "removed": True},
+        ]
+        mock_table.get_item.return_value = {
+            "Item": {"weeks": {WEEK: {"items": prev}}}
+        }
+        r = client.post(f"/shopping-list/generate?week={WEEK}", headers=AUTH)
+        assert r.status_code == 200
+        items = {i["name"]: i for i in r.json()["items"]}
+        # user-added item survives regenerate untouched
+        assert items["paper towels"]["custom"] is True
+        assert items["paper towels"]["quantity"] == "2"
+        # removed + checked state carries over to the regenerated onion line
+        assert items["onion"]["removed"] is True
+        assert items["onion"]["checked"] is True
 
     def test_requires_auth(self, mock_table, mock_mp, mock_recipe):
         assert client.post(f"/shopping-list/generate?week={WEEK}").status_code == 401

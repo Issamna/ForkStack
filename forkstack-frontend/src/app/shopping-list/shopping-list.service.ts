@@ -8,6 +8,8 @@ export interface ShoppingItem {
   quantity: string;
   sources: string[];
   checked: boolean;
+  custom?: boolean;
+  removed?: boolean;
 }
 
 interface ShoppingList {
