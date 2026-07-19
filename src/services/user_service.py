@@ -10,6 +10,7 @@ from dependencies import get_current_user
 from models.token import Token
 from models.user import UserIn, UserOut, UserUpdate, PasswordChange
 from utils import recaptcha
+from utils.db import scan_all
 from utils.auth import create_access_token
 from utils.security import hash_password, verify_password
 
@@ -47,9 +48,9 @@ def _conflict_exists(username: str | None, email: str | None, exclude_user_id: s
     for cond in conditions[1:]:
         filter_expr = filter_expr | cond
 
-    items = table.scan(
-        FilterExpression=filter_expr, ProjectionExpression="user_id"
-    ).get("Items", [])
+    items = scan_all(
+        table, FilterExpression=filter_expr, ProjectionExpression="user_id"
+    )
     return any(u["user_id"] != exclude_user_id for u in items)
 
 
@@ -78,7 +79,7 @@ async def login(request: Request):
     password = form.get("password")
     remember_me = form.get("remember_me") == "true"
 
-    users = table.scan(FilterExpression=Attr("username").eq(username)).get("Items", [])
+    users = scan_all(table, FilterExpression=Attr("username").eq(username))
 
     if not users:
         logger.warning("User not found for username: %s", username)
@@ -140,10 +141,11 @@ def change_password(
 def delete_me(current_user_id: str = Depends(get_current_user)):
     _get_user_or_404(current_user_id)
 
-    owned = recipe_table.scan(
+    owned = scan_all(
+        recipe_table,
         FilterExpression=Attr("owner_id").eq(current_user_id),
         ProjectionExpression="recipe_id",
-    ).get("Items", [])
+    )
     for recipe in owned:
         recipe_table.delete_item(Key={"recipe_id": recipe["recipe_id"]})
 

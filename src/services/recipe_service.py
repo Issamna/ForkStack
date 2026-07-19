@@ -10,6 +10,7 @@ from typing import List
 
 from dependencies import get_current_user
 from models.recipe import RecipeIn, RecipeOut, URLIn
+from utils.db import scan_all
 from utils.parser import recipe_scraper
 from utils.pdf import build_recipe_pdf
 
@@ -40,7 +41,7 @@ def create(recipe: RecipeIn, current_user_id: str = Depends(get_current_user)):
 
 @router.get("", response_model=List[RecipeOut])
 def list_all(current_user_id: str = Depends(get_current_user)):
-    all_items = table.scan().get("Items", [])
+    all_items = scan_all(table)
     return [
         item
         for item in all_items
@@ -50,7 +51,7 @@ def list_all(current_user_id: str = Depends(get_current_user)):
 
 @router.get("/search", response_model=List[RecipeOut])
 def search(title: str, current_user_id: str = Depends(get_current_user)):
-    all_items = table.scan().get("Items", [])
+    all_items = scan_all(table)
     return [
         item
         for item in all_items

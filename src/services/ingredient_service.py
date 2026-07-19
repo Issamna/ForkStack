@@ -7,6 +7,7 @@ from typing import List
 
 from dependencies import get_current_user
 from models.ingredient import Ingredient
+from utils.db import scan_all
 
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table(os.environ.get("INGREDIENT_TABLE", "IngredientTable"))
@@ -24,8 +25,7 @@ def _require_ingredient(ingredient_id: str) -> dict:
 
 @router.get("", response_model=List[Ingredient])
 def list_all_ingredients(current_user_id: str = Depends(get_current_user)):
-    response = table.scan()
-    items = response.get("Items", [])
+    items = scan_all(table)
     return sorted(items, key=lambda x: x["name"].lower())
 
 
@@ -43,8 +43,7 @@ def create_ingredient(
     normalized_name = ingredient.name.strip().lower()
 
     # Check for duplicates
-    response = table.scan()
-    for item in response.get("Items", []):
+    for item in scan_all(table):
         if item["name"].strip().lower() == normalized_name:
             raise HTTPException(status_code=400, detail="Ingredient already exists")
 
