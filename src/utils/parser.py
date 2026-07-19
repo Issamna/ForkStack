@@ -124,6 +124,10 @@ def parse_ingredient(text: str):
     identify an amount or unit -- a clean unparsed line beats a mangled one.
     """
     raw = text.strip()
+    # Drop per-ingredient cost annotations like "($0.32)" and footnote markers
+    # ("chili powder *") that some sites (e.g. Budget Bytes) put in the text.
+    raw = re.sub(r"\s*\(\$[^)]*\)", "", raw)
+    raw = re.sub(r"\s*\*+", "", raw).strip()
     normalized = raw
     for symbol, ascii_fraction in _UNICODE_FRACTIONS.items():
         normalized = normalized.replace(symbol, " " + ascii_fraction)

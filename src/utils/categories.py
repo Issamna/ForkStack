@@ -142,11 +142,18 @@ def categorize(name) -> str:
         rest = c.split()[1:]
         return "spices" if rest and _singular(rest[-1]) in _HERBS else "pantry"
 
+    # Container/state overrides win over the produce head noun: "canned
+    # tomatoes" is pantry (not produce), "frozen corn" is frozen (not produce).
+    tokens = [_singular(t) for t in c.split()]
+    if "frozen" in tokens:
+        return "frozen"
+    if any(t in {"can", "canned", "jar", "jarred"} for t in tokens):
+        return "pantry"
+
     for phrase in _PHRASES_BY_LENGTH:
         if phrase in c:
             return _PHRASES[phrase]
 
-    tokens = [_singular(t) for t in c.split()]
     for tok in reversed(tokens):  # head noun last: "goat cheese" -> dairy
         if tok in _TOKENS:
             return _TOKENS[tok]
