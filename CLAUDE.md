@@ -71,6 +71,13 @@ JWT bearer tokens (HS256). `dependencies.get_current_user` is the shared FastAPI
 
 The primary frontend deploy is **GitHub Pages** via `.github/workflows/` (builds with base-href `/ForkStack/`, publishes to the `gh-pages` branch, copies `index.html`→`404.html` for SPA deep links). CloudFront (FrontendStack) is a secondary mirror built with base-href `/`. The frontend targets the deployed API Gateway URL hard-coded in the Angular services' `apiUrl` (e.g. `recipe.service.ts`, `auth.service.ts`) — update those when the API endpoint changes.
 
+## Security invariants (don't regress)
+
+- `api.py` runs with `debug=False` and docs/OpenAPI disabled — don't re-enable in committed code (it leaks internals).
+- Passwords have a **10-char minimum** (`models/user.MIN_PASSWORD_LENGTH`), enforced on register and change-password; the register form mirrors it.
+- Login returns an identical `"Invalid username or password"` for unknown-user and wrong-password — keep it non-enumerable, and don't log attempted usernames.
+- `utils/parser._fetch_html` is SSRF-hardened: it validates every hop, **pins the connection to the validated IP** (DNS-rebind protection), and caps the body/content-type. Don't refactor it back to a plain `requests.get(url)`.
+
 ## Gotchas
 
 - Because service modules bind their table handle at import time, tests patch the module-level `table` object, not `boto3`.
