@@ -1,7 +1,7 @@
 import pytest
 from fastapi import HTTPException
 
-from utils.parser import assert_safe_url, parse_ingredient
+from utils.parser import _is_disallowed_ip, assert_safe_url, parse_ingredient
 
 
 class TestParseIngredient:
@@ -58,3 +58,19 @@ class TestSsrfGuard:
     def test_disallowed_urls_rejected(self, url):
         with pytest.raises(HTTPException):
             assert_safe_url(url)
+
+    @pytest.mark.parametrize(
+        "ip,disallowed",
+        [
+            ("127.0.0.1", True),
+            ("10.0.0.5", True),
+            ("169.254.169.254", True),
+            ("::1", True),
+            ("::ffff:127.0.0.1", True),  # IPv4-mapped loopback must not slip through
+            ("::ffff:10.0.0.5", True),
+            ("8.8.8.8", False),
+            ("93.184.216.34", False),
+        ],
+    )
+    def test_is_disallowed_ip(self, ip, disallowed):
+        assert _is_disallowed_ip(ip) is disallowed
