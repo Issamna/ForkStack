@@ -14,6 +14,8 @@ export class RecipeDetailComponent implements OnInit {
   showConfirm = false;
   adding = false;
   downloadingPdf = false;
+  pdfMessage = '';
+  pdfError = false;
 
   constructor(
     private route: ActivatedRoute,
@@ -56,6 +58,8 @@ export class RecipeDetailComponent implements OnInit {
   downloadPdf(): void {
     if (!this.recipe || this.downloadingPdf) return;
     this.downloadingPdf = true;
+    this.pdfMessage = 'Preparing PDF…';
+    this.pdfError = false;
     this.recipeService.downloadPdf(this.recipe.recipe_id).subscribe({
       next: (res) => {
         const binary = atob(res.content_base64);
@@ -71,8 +75,15 @@ export class RecipeDetailComponent implements OnInit {
         a.click();
         URL.revokeObjectURL(url);
         this.downloadingPdf = false;
+        this.pdfMessage = `Downloaded ${res.filename}`;
+        this.pdfError = false;
+        setTimeout(() => (this.pdfMessage = ''), 4000);
       },
-      error: () => (this.downloadingPdf = false),
+      error: () => {
+        this.downloadingPdf = false;
+        this.pdfMessage = "Couldn't generate the PDF. Please try again.";
+        this.pdfError = true;
+      },
     });
   }
 

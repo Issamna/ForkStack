@@ -104,6 +104,14 @@
       {{ adding ? "Adding…" : "+ Add to my cookbook" }}
     </button>
   </div>
+  <p
+    *ngIf="pdfMessage"
+    class="text-sm mb-2"
+    [class.text-sage]="!pdfError"
+    [class.text-red-600]="pdfError"
+  >
+    {{ pdfMessage }}
+  </p>
   <p *ngIf="recipe.servings" class="text-sm text-gray-500 mb-2">
     Serves {{ recipe.servings }}
   </p>
@@ -120,7 +128,7 @@
   <div class="w-full max-w-xs mx-auto sm:hidden mb-6">
     <div class="aspect-square rounded overflow-hidden shadow">
       <img
-        [src]="imageHelper.getImageForTags(recipe?.recipe_tags)"
+        [src]="imageHelper.getImageForTags(recipe?.recipe_tags, recipe?.recipe_id)"
         alt="Recipe image"
         class="w-full h-full object-cover"
       />
@@ -142,7 +150,7 @@
       class="hidden sm:block w-full max-w-xs aspect-square rounded overflow-hidden shadow"
     >
       <img
-        [src]="imageHelper.getImageForTags(recipe?.recipe_tags)"
+        [src]="imageHelper.getImageForTags(recipe?.recipe_tags, recipe?.recipe_id)"
         alt="Recipe image"
         class="w-full h-full object-cover"
       />

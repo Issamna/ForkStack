@@ -116,7 +116,11 @@ export class RecipeFormComponent implements OnInit {
       },
       error: (err) => {
         console.error('Parse failed', err);
-        this.parseError = 'Failed to parse recipe. Try another URL.';
+        // The backend returns a specific, user-friendly reason (site blocked
+        // us, no recipe found, bad URL, ...); surface it instead of a generic
+        // message. Fall back only when there's no detail.
+        this.parseError =
+          err?.error?.detail || 'Failed to parse recipe. Try another URL.';
         this.isParsing = false;
       },
     });

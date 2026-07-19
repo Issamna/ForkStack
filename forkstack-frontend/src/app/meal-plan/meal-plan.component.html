@@ -259,7 +259,7 @@
           [ngClass]="selectedRecipe?.recipe_id === r.recipe_id ? 'bg-gray-100' : ''"
         >
           <img
-            [src]="imageHelper.getImageForTags(r.recipe_tags)"
+            [src]="imageHelper.getImageForTags(r.recipe_tags, r.recipe_id)"
             alt=""
             class="w-7 h-7 rounded object-cover flex-shrink-0"
           />

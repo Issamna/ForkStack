@@ -41,7 +41,10 @@ export class RecipesComponent implements OnInit {
     this.recipeService.getAll().subscribe((data) => {
       this.allRecipes = data.map((recipe) => ({
         ...recipe,
-        imageSrc: this.imageHelper.getImageForTags(recipe.recipe_tags),
+        imageSrc: this.imageHelper.getImageForTags(
+          recipe.recipe_tags,
+          recipe.recipe_id,
+        ),
       }));
       this.loading = false;
       this.applyFilters();

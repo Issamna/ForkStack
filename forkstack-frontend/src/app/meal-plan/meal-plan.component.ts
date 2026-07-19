@@ -235,7 +235,10 @@ export class MealPlanComponent implements OnInit {
   }
 
   thumb(entry: MealEntry): string {
-    return this.imageHelper.getImageForTags(entry.tags);
+    return this.imageHelper.getImageForTags(
+      entry.tags,
+      entry.recipe_id || entry.id,
+    );
   }
 
   mealLabel(meal: string | null | undefined): string {
