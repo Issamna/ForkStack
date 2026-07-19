@@ -81,13 +81,16 @@ async def login(request: Request):
 
     users = scan_all(table, FilterExpression=Attr("username").eq(username))
 
+    # Identical response whether the username is unknown or the password is
+    # wrong, so the endpoint can't be used to enumerate valid accounts. Don't
+    # log the attempted username (it lands in CloudWatch).
+    invalid = HTTPException(status_code=400, detail="Invalid username or password")
     if not users:
-        logger.warning("User not found for username: %s", username)
-        raise HTTPException(status_code=400, detail="Invalid username")
+        raise invalid
 
     user = users[0]
     if not verify_password(password, user["hashed_password"]):
-        raise HTTPException(status_code=400, detail="Invalid password")
+        raise invalid
 
     expires = 24 * 7 if remember_me else 1
     access_token = create_access_token(

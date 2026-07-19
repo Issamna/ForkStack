@@ -1,11 +1,15 @@
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
+
+# Minimum length only -- length is the property that actually resists brute
+# force; composition rules mostly push users toward predictable patterns.
+MIN_PASSWORD_LENGTH = 10
 
 
 class UserIn(BaseModel):
-    username: str
-    password: str
+    username: str = Field(..., min_length=1, max_length=100)
+    password: str = Field(..., min_length=MIN_PASSWORD_LENGTH, max_length=256)
     email: EmailStr
     captcha_token: Optional[str] = None
 
@@ -27,4 +31,4 @@ class UserUpdate(BaseModel):
 
 class PasswordChange(BaseModel):
     current_password: str
-    new_password: str
+    new_password: str = Field(..., min_length=MIN_PASSWORD_LENGTH, max_length=256)

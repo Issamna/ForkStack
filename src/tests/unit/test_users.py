@@ -28,7 +28,11 @@ class TestRegister:
         mock_table.put_item.return_value = {}
         r = client.post(
             "/users",
-            json={"username": "bob", "email": "bob@example.com", "password": "pw"},
+            json={
+                "username": "bob",
+                "email": "bob@example.com",
+                "password": "password123",
+            },
         )
         assert r.status_code == 200
         assert r.json()["username"] == "bob"
@@ -38,9 +42,49 @@ class TestRegister:
         mock_table.scan.return_value = {"Items": [{"user_id": "someone-else"}]}
         r = client.post(
             "/users",
-            json={"username": "bob", "email": "bob@example.com", "password": "pw"},
+            json={
+                "username": "bob",
+                "email": "bob@example.com",
+                "password": "password123",
+            },
         )
         assert r.status_code == 400
+
+    def test_register_rejects_short_password(self, mock_table):
+        r = client.post(
+            "/users",
+            json={"username": "bob", "email": "bob@example.com", "password": "short"},
+        )
+        assert r.status_code == 422
+
+
+@patch("services.user_service.table")
+class TestLogin:
+    def _login(self, password):
+        return client.post(
+            "/users/login",
+            data={"username": "alice", "password": password},
+        )
+
+    def test_unknown_user_and_wrong_password_are_indistinguishable(self, mock_table):
+        # Unknown username -> scan finds nobody.
+        mock_table.scan.return_value = {"Items": []}
+        unknown = self._login("whatever12")
+
+        # Known username, wrong password.
+        mock_table.scan.return_value = {"Items": [_user_record("realpass123")]}
+        wrong = self._login("nottherealone")
+
+        assert unknown.status_code == wrong.status_code == 400
+        # Identical response, so login can't be used to enumerate accounts.
+        assert unknown.json()["detail"] == wrong.json()["detail"]
+        assert unknown.json()["detail"] == "Invalid username or password"
+
+    def test_login_success(self, mock_table):
+        mock_table.scan.return_value = {"Items": [_user_record("realpass123")]}
+        r = self._login("realpass123")
+        assert r.status_code == 200
+        assert "access_token" in r.json()
 
 
 class TestAuthRequired:
@@ -82,7 +126,7 @@ class TestProfile:
         mock_table.get_item.return_value = {"Item": _user_record("realpass")}
         r = client.post(
             "/users/me/change-password",
-            json={"current_password": "wrong", "new_password": "x"},
+            json={"current_password": "wrong", "new_password": "newpassword123"},
             headers=AUTH,
         )
         assert r.status_code == 400
@@ -92,10 +136,19 @@ class TestProfile:
         mock_table.put_item.return_value = {}
         r = client.post(
             "/users/me/change-password",
-            json={"current_password": "realpass", "new_password": "newpw"},
+            json={"current_password": "realpass", "new_password": "newpassword123"},
             headers=AUTH,
         )
         assert r.status_code == 200
+
+    def test_change_password_rejects_short_new(self, mock_table):
+        mock_table.get_item.return_value = {"Item": _user_record("realpass")}
+        r = client.post(
+            "/users/me/change-password",
+            json={"current_password": "realpass", "new_password": "short"},
+            headers=AUTH,
+        )
+        assert r.status_code == 422
 
 
 @patch("services.user_service.shopping_list_table")
