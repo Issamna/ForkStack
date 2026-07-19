@@ -76,6 +76,7 @@ The primary frontend deploy is **GitHub Pages** via `.github/workflows/` (builds
 - `api.py` runs with `debug=False` and docs/OpenAPI disabled — don't re-enable in committed code (it leaks internals).
 - Passwords have a **10-char minimum** (`models/user.MIN_PASSWORD_LENGTH`), enforced on register and change-password; the register form mirrors it.
 - Login returns an identical `"Invalid username or password"` for unknown-user and wrong-password — keep it non-enumerable, and don't log attempted usernames.
+- Tokens carry a `ver` claim matched against the user's `token_version` in `get_current_user` (one GetItem/request). Changing a password bumps the version (invalidating old tokens; change-password reissues a fresh one), and a deleted account fails the lookup — don't drop this check.
 - `utils/parser._fetch_html` is SSRF-hardened: it validates every hop, **pins the connection to the validated IP** (DNS-rebind protection), and caps the body/content-type. Don't refactor it back to a plain `requests.get(url)`.
 
 ## Gotchas

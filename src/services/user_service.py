@@ -67,6 +67,8 @@ def create_user(user: UserIn):
         "username": user.username,
         "email": user.email,
         "hashed_password": hash_password(user.password),
+        # Bumped on password change to invalidate previously-issued tokens.
+        "token_version": 0,
     }
     table.put_item(Item=item)
     return UserOut(user_id=user_id, username=user.username, email=user.email)
@@ -94,7 +96,8 @@ async def login(request: Request):
 
     expires = 24 * 7 if remember_me else 1
     access_token = create_access_token(
-        data={"sub": user["user_id"]}, expires_delta=expires
+        data={"sub": user["user_id"], "ver": int(user.get("token_version", 0))},
+        expires_delta=expires,
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
@@ -135,9 +138,15 @@ def change_password(
     if not verify_password(payload.current_password, user["hashed_password"]):
         raise HTTPException(status_code=400, detail="Current password is incorrect")
 
+    # Bump token_version so every token issued before this change (on any
+    # device) stops validating, then hand back a fresh token so the current
+    # session isn't logged out.
+    new_version = int(user.get("token_version", 0)) + 1
     user["hashed_password"] = hash_password(payload.new_password)
+    user["token_version"] = new_version
     table.put_item(Item=user)
-    return {"message": "Password updated"}
+    token = create_access_token(data={"sub": current_user_id, "ver": new_version})
+    return {"message": "Password updated", "access_token": token, "token_type": "bearer"}
 
 
 @router.delete("/me")

@@ -59,7 +59,16 @@ export class AuthService {
     current_password: string;
     new_password: string;
   }): Observable<any> {
-    return this.http.post(`${this.apiUrl}/me/change-password`, data);
+    return this.http.post(`${this.apiUrl}/me/change-password`, data).pipe(
+      tap((res: any) => {
+        // The server bumps token_version on a password change, invalidating
+        // every previously-issued token. Adopt the fresh one it returns so the
+        // current session isn't logged out.
+        if (res?.access_token) {
+          localStorage.setItem('access_token', res.access_token);
+        }
+      }),
+    );
   }
 
   deleteAccount(): Observable<any> {

@@ -150,6 +150,39 @@ class TestProfile:
         )
         assert r.status_code == 422
 
+    def test_change_password_returns_fresh_token(self, mock_table):
+        mock_table.get_item.return_value = {"Item": _user_record("realpass")}
+        mock_table.put_item.return_value = {}
+        r = client.post(
+            "/users/me/change-password",
+            json={"current_password": "realpass", "new_password": "newpassword123"},
+            headers=AUTH,
+        )
+        assert r.status_code == 200
+        assert "access_token" in r.json()
+
+
+class TestTokenRevocation:
+    def test_token_from_before_password_change_is_rejected(self):
+        # Token minted at version 0, but the account is now at version 1
+        # (i.e. the password was changed on another session).
+        old_token = create_access_token({"sub": TEST_USER_ID, "ver": 0})
+        with patch("dependencies._user_table") as t:
+            t.get_item.return_value = {
+                "Item": {"user_id": TEST_USER_ID, "token_version": 1}
+            }
+            r = client.get(
+                "/users/me", headers={"Authorization": f"Bearer {old_token}"}
+            )
+        assert r.status_code == 401
+
+    def test_token_for_deleted_account_is_rejected(self):
+        token = create_access_token({"sub": "ghost", "ver": 0})
+        with patch("dependencies._user_table") as t:
+            t.get_item.return_value = {}  # no such user
+            r = client.get("/users/me", headers={"Authorization": f"Bearer {token}"})
+        assert r.status_code == 401
+
 
 @patch("services.user_service.shopping_list_table")
 @patch("services.user_service.meal_plan_table")
