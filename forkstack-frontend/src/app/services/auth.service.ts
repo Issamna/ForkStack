@@ -3,11 +3,11 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private apiUrl =
-    'https://e6q9keyixh.execute-api.us-east-1.amazonaws.com/prod/users';
+  private apiUrl = `${environment.apiBase}/users`;
 
   constructor(
     private http: HttpClient,

@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpParams, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { AuthService } from '../services/auth.service';
+import { environment } from '../../environments/environment';
 
 export interface Ingredient {
   name: string;
@@ -30,72 +30,45 @@ export interface Recipe {
   providedIn: 'root',
 })
 export class RecipeService {
-  private apiUrl =
-    'https://e6q9keyixh.execute-api.us-east-1.amazonaws.com/prod/recipes';
+  private apiUrl = `${environment.apiBase}/recipes`;
 
-  constructor(
-    private http: HttpClient,
-    private authService: AuthService,
-  ) {}
-
-  private authHeaders(): HttpHeaders {
-    const token = this.authService.getToken();
-    return new HttpHeaders({
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    });
-  }
+  // The Authorization header is attached globally by AuthInterceptor, and
+  // HttpClient sets Content-Type: application/json for object bodies, so no
+  // per-request headers are needed here.
+  constructor(private http: HttpClient) {}
 
   getAll(): Observable<Recipe[]> {
-    return this.http.get<Recipe[]>(this.apiUrl, {
-      headers: this.authHeaders(),
-    });
+    return this.http.get<Recipe[]>(this.apiUrl);
   }
 
   search(title: string): Observable<Recipe[]> {
     const params = new HttpParams().set('title', title);
-    return this.http.get<Recipe[]>(`${this.apiUrl}/search`, {
-      headers: this.authHeaders(),
-      params,
-    });
+    return this.http.get<Recipe[]>(`${this.apiUrl}/search`, { params });
   }
 
   getById(id: string): Observable<Recipe> {
-    return this.http.get<Recipe>(`${this.apiUrl}/${id}`, {
-      headers: this.authHeaders(),
-    });
+    return this.http.get<Recipe>(`${this.apiUrl}/${id}`);
   }
 
   create(recipe: Omit<Recipe, 'recipe_id'>): Observable<Recipe> {
-    return this.http.post<Recipe>(this.apiUrl, recipe, {
-      headers: this.authHeaders(),
-    });
+    return this.http.post<Recipe>(this.apiUrl, recipe);
   }
 
   update(
     recipe_id: string,
     recipe: Omit<Recipe, 'recipe_id'>,
   ): Observable<Recipe> {
-    return this.http.put<Recipe>(`${this.apiUrl}/${recipe_id}`, recipe, {
-      headers: this.authHeaders(),
-    });
+    return this.http.put<Recipe>(`${this.apiUrl}/${recipe_id}`, recipe);
   }
 
   delete(recipe_id: string): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/${recipe_id}`, {
-      headers: this.authHeaders(),
-    });
+    return this.http.delete<void>(`${this.apiUrl}/${recipe_id}`);
   }
 
   parseUrl(url: string): Observable<Omit<Recipe, 'recipe_id' | 'owner_id'>> {
     return this.http.post<Omit<Recipe, 'recipe_id' | 'owner_id'>>(
       `${this.apiUrl}/parse-url`,
       { url },
-      {
-        headers: new HttpHeaders({
-          'Content-Type': 'application/json',
-        }),
-      },
     );
   }
 
@@ -104,16 +77,12 @@ export class RecipeService {
   ): Observable<{ filename: string; content_base64: string }> {
     return this.http.get<{ filename: string; content_base64: string }>(
       `${this.apiUrl}/${id}/pdf`,
-      { headers: this.authHeaders() },
     );
   }
 
   getTags(): Observable<{ id: string; name: string }[]> {
     return this.http.get<{ id: string; name: string }[]>(
-      'https://e6q9keyixh.execute-api.us-east-1.amazonaws.com/prod/tags',
-      {
-        headers: this.authHeaders(),
-      },
+      `${environment.apiBase}/tags`,
     );
   }
 }

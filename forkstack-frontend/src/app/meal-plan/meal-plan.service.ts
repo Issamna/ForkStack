@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 export interface MealEntry {
   id: string;
@@ -16,8 +17,7 @@ export interface MealEntry {
 
 @Injectable({ providedIn: 'root' })
 export class MealPlanService {
-  private apiUrl =
-    'https://e6q9keyixh.execute-api.us-east-1.amazonaws.com/prod/meal-plan';
+  private apiUrl = `${environment.apiBase}/meal-plan`;
 
   constructor(private http: HttpClient) {}
 

@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 export interface ShoppingItem {
   name: string;
@@ -20,8 +21,7 @@ interface ShoppingList {
 
 @Injectable({ providedIn: 'root' })
 export class ShoppingListService {
-  private apiUrl =
-    'https://e6q9keyixh.execute-api.us-east-1.amazonaws.com/prod/shopping-list';
+  private apiUrl = `${environment.apiBase}/shopping-list`;
 
   constructor(private http: HttpClient) {}
 
