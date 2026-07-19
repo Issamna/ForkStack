@@ -52,22 +52,9 @@ def create_ingredient(
     return ingredient
 
 
-@router.put("/{ingredient_id}", response_model=Ingredient)
-def update_ingredient(
-    ingredient_id: str,
-    updated: Ingredient,
-    current_user_id: str = Depends(get_current_user),
-):
-    _require_ingredient(ingredient_id)
-    updated.ingredient_id = ingredient_id
-    table.put_item(Item=updated.dict())
-    return updated
-
-
-@router.delete("/{ingredient_id}")
-def delete_ingredient(
-    ingredient_id: str, current_user_id: str = Depends(get_current_user)
-):
-    _require_ingredient(ingredient_id)
-    table.delete_item(Key={"ingredient_id": ingredient_id})
-    return {"message": "Ingredient deleted"}
+# This is a SHARED, catalog for everyone (seeded from USDA, extended when a user
+# enters an ingredient that isn't in it yet). It is intentionally append-only:
+# any signed-in user may add a missing ingredient, but no one can edit or delete
+# an existing entry -- otherwise a single account could overwrite or wipe the
+# catalog for all users. Curate bad entries directly in DynamoDB, or add an
+# admin-gated route later if in-app curation is needed.

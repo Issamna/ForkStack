@@ -17,7 +17,7 @@ Runs rooted at `src/` — modules import as top-level (`from services import ...
 | `/recipes` | `recipe_service.py` | `recipe.py` (`RecipeIn/Out`, `URLIn`, `RecipeTag`) | `RECIPE_TABLE` | CRUD + `/search` + `/{id}/pdf` (base64) + `/parse-url` (URL import) |
 | `/users` | `user_service.py` | `user.py`, `token.py` | `USER_TABLE` | register, `/login` (form POST → JWT), `/me` GET/PATCH/DELETE, `/me/change-password` |
 | `/tags` | `tag_service.py` | `recipe.py::RecipeTag` | `RECIPE_TAG_TABLE` | list/get/create |
-| `/ingredients` | `ingredient_service.py` | `ingredient.py` | `INGREDIENT_TABLE` | CRUD; USDA-seeded |
+| `/ingredients` | `ingredient_service.py` | `ingredient.py` | `INGREDIENT_TABLE` | shared **add-only** catalog (list/get/create; no PUT/DELETE); USDA-seeded |
 | `/meal-plan` | `meal_plan_service.py` | `meal_plan.py` | `MEAL_PLAN_TABLE` | GET/PUT by `?week=YYYY-MM-DD` |
 | `/shopping-list` | `shopping_list_service.py` | `shopping_list.py` | `SHOPPING_LIST_TABLE` | `/generate`, GET, PUT by `?week=` |
 
