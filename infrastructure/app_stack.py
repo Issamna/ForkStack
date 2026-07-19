@@ -108,7 +108,12 @@ class AppStack(Stack):
                 "SHOPPING_LIST_TABLE": shopping_list_table.table_name,
                 "JWT_SECRET_ARN": jwt_secret.secret_arn,
                 "RECAPTCHA_SECRET_ARN": recaptcha_secret.secret_arn,
-                "ENFORCE_RECAPTCHA": "false",
+                # PREREQUISITE: the reCAPTCHA v3 server secret must be populated
+                # (`aws secretsmanager put-secret-value --secret-id
+                # forkstack/recaptcha --secret-string <key>`) BEFORE deploying
+                # this. With enforcement on and no secret, registration returns
+                # 500. The frontend site key is already wired in app.module.ts.
+                "ENFORCE_RECAPTCHA": "true",
                 "ALLOWED_ORIGINS": "https://issamna.github.io,https://ds0s04vkdxys7.cloudfront.net,http://localhost:4200",
             },
         )
