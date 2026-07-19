@@ -6,6 +6,7 @@ from aws_cdk import (
     aws_apigateway as apigateway,
     aws_dynamodb as dynamodb,
     aws_secretsmanager as secretsmanager,
+    aws_wafv2 as wafv2,
     RemovalPolicy,
 )
 from constructs import Construct
@@ -126,4 +127,54 @@ class AppStack(Stack):
             "ForkStackEndpoint",
             handler=lambda_fn,
             proxy=True,
+            # Coarse account-safety throttle across all methods: caps steady
+            # request rate + burst so a runaway client can't drive Lambda cost
+            # or exhaust capacity. Per-IP abuse is handled by the WAF below.
+            deploy_options=apigateway.StageOptions(
+                throttling_rate_limit=25,
+                throttling_burst_limit=50,
+            ),
+        )
+
+        # Per-IP rate limiting (brute-force / scraping defense). A rate-based
+        # rule blocks a source IP that exceeds the limit within a 5-minute
+        # window; everything else is allowed through.
+        web_acl = wafv2.CfnWebACL(
+            self,
+            "ApiWebAcl",
+            scope="REGIONAL",
+            default_action=wafv2.CfnWebACL.DefaultActionProperty(allow={}),
+            visibility_config=wafv2.CfnWebACL.VisibilityConfigProperty(
+                cloud_watch_metrics_enabled=True,
+                metric_name="ForkStackApiWebAcl",
+                sampled_requests_enabled=True,
+            ),
+            rules=[
+                wafv2.CfnWebACL.RuleProperty(
+                    name="RateLimitPerIp",
+                    priority=1,
+                    action=wafv2.CfnWebACL.RuleActionProperty(block={}),
+                    statement=wafv2.CfnWebACL.StatementProperty(
+                        rate_based_statement=wafv2.CfnWebACL.RateBasedStatementProperty(
+                            limit=1000,  # requests per IP per 5 min
+                            aggregate_key_type="IP",
+                        ),
+                    ),
+                    visibility_config=wafv2.CfnWebACL.VisibilityConfigProperty(
+                        cloud_watch_metrics_enabled=True,
+                        metric_name="RateLimitPerIp",
+                        sampled_requests_enabled=True,
+                    ),
+                ),
+            ],
+        )
+
+        wafv2.CfnWebACLAssociation(
+            self,
+            "ApiWebAclAssociation",
+            resource_arn=(
+                f"arn:aws:apigateway:{self.region}::/restapis/"
+                f"{apigw.rest_api_id}/stages/{apigw.deployment_stage.stage_name}"
+            ),
+            web_acl_arn=web_acl.attr_arn,
         )
