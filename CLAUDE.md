@@ -74,5 +74,6 @@ The primary frontend deploy is **GitHub Pages** via `.github/workflows/` (builds
 ## Gotchas
 
 - Because service modules bind their table handle at import time, tests patch the module-level `table` object, not `boto3`.
-- List/search endpoints currently use `table.scan()` + in-memory filtering rather than queries/indexes.
-- `src/scripts/` (USDA ingredient importers) contain hard-coded API keys and a hard-coded API URL — one-off backfill tooling, not part of the request path.
+- List/search/login/dedupe use `table.scan()` + in-memory filtering rather than queries/indexes. All scans go through `utils/db.scan_all` (follows `LastEvaluatedKey`); a raw `table.scan().get("Items")` would silently truncate past 1 MB, so use the helper. GSIs on `username`/`email`/`owner_id` are still a worthwhile follow-up for performance.
+- The frontend API base URL lives in `forkstack-frontend/src/environments/environment.ts` (`apiBase`); services build endpoints from it. `AuthInterceptor` attaches the bearer token globally, so services don't set `Authorization` themselves.
+- `src/scripts/` (USDA ingredient importers) are one-off backfill tooling, not part of the request path. They read `USDA_API_KEY`/`FORKSTACK_API_URL` from the env.

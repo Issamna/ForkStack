@@ -60,7 +60,7 @@ If a new reusable pattern emerges, add a class here rather than repeating utilit
 - **`AuthInterceptor` already attaches the bearer token to every request** and logs out on 401 — you do **not** need to add `Authorization` headers manually (some older services still do via `authHeaders()`; don't copy that, rely on the interceptor).
 - Token lives in `localStorage['access_token']`; `AuthService.getUserId()`/`isTokenExpired()` decode the JWT client-side. Ownership-aware UI reads `auth.getUserId()` and compares to `recipe.owner_id`.
 - The "shared cookbook" model is real: recipe list has **Mine / Discover** tabs — Discover shows other users' `is_shareable` recipes (read-only, no edit/delete controls).
-- **API base URL is hard-coded per service.** Until an `environment.ts` exists, a new service must repeat the `https://…/prod` base — and any endpoint change touches every service. Flag this rather than silently adding a 5th copy if you can centralize it.
+- **API base URL** comes from `src/environments/environment.ts` (`apiBase`) — a new service imports it and builds `` `${environment.apiBase}/<domain>` ``. Don't hard-code the URL.
 
 ## Forms
 

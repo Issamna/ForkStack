@@ -25,6 +25,7 @@ Each service binds its own `boto3` table handle at **import time** (`table = dyn
 
 ### Shared backend pieces
 - `dependencies.py` — `get_current_user` (decodes JWT → `user_id`); nearly every route depends on it.
+- `utils/db.py` — `scan_all(table, **kwargs)`; every service scan goes through it (a raw `table.scan().get("Items")` silently truncates past 1 MB).
 - `utils/auth.py` — `create_access_token`, `get_jwt_secret` (env `JWT_SECRET_KEY` → else Secrets Manager `JWT_SECRET_ARN`; no insecure default).
 - `utils/secrets.py` — resolve a secret by env-var-holding-the-ARN, per-process cached.
 - `utils/security.py` — passlib `pbkdf2_sha256` hash/verify.
@@ -53,13 +54,11 @@ App shell: `app.component.html` (navbar + dropdown menu + `<router-outlet>`).
 - `services/auth.service.ts` — login/register/me/password/delete; token in `localStorage`; `getUserId`/`isTokenExpired` decode the JWT client-side.
 - `services/image-helper.service.ts` — tag image selection.
 - `recipes/recipe.service.ts`, `meal-plan/meal-plan.service.ts`, `shopping-list/shopping-list.service.ts` — per-domain HTTP.
-- **The API base URL is hard-coded in each service** (`https://e6q9keyixh.execute-api.us-east-1.amazonaws.com/prod/...`) — there is no `environment.ts`. Changing the API endpoint means editing every service.
+- **API base URL** lives in `src/environments/environment.ts` (`apiBase`); every service builds its endpoints from it. `AuthInterceptor` attaches the bearer token globally, so services don't set `Authorization` themselves.
 
 ## Infrastructure (`infrastructure/`, entry `app.py`)
 - `app_stack.py` — **AppStack**: 6 DynamoDB tables (User=DESTROY; Recipe/RecipeTag default; Ingredient/MealPlan/ShoppingList=RETAIN), `PythonFunction` Lambda from `src/` (`api.py::handler`, py3.12, 29s, 512MB), JWT + reCAPTCHA secrets, proxy `LambdaRestApi`. Table env vars + `ALLOWED_ORIGINS` set here.
 - `frontend_stack.py` — **FrontendStack**: S3 + CloudFront, SPA 403/404→index fallback, deploys `forkstack-frontend/dist-cloudfront`.
 
-## Known dead/duplicate code (don't mistake for live)
-- `app/guards/auth.guard.ts` is a dead duplicate of `app/auth.guard.ts` (the routing uses the latter).
+## Known stubs (don't mistake for live)
 - `/forgot-password` has no backend — the component shows a "coming soon" message.
-- Root `package.json` React deps are vestigial; the frontend is Angular.
