@@ -3,14 +3,14 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from api import app
-from utils.auth import create_access_token
+from tests.helpers import auth
 from utils.categories import categorize
 from utils.ingredients import canonical_name, canonical_unit, clean_name
 from utils.quantity import format_quantity, parse_quantity, parse_servings
 
 client = TestClient(app)
 USER = "sl-user"
-AUTH = {"Authorization": f"Bearer {create_access_token({'sub': USER})}"}
+AUTH = auth(USER)
 WEEK = "2026-06-22"
 
 PASTA = {

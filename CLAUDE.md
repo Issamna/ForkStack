@@ -22,7 +22,7 @@ python -m pytest                       # run all tests
 python -m pytest tests/unit/test_recipies.py            # single file
 python -m pytest tests/unit/test_recipies.py::TestRecipeAPI::test_create_recipe   # single test
 ```
-Tests mock the DynamoDB tables (`@patch("services.<name>.table")`) and mint real JWTs via `create_access_token`. `tests/conftest.py` sets `JWT_SECRET_KEY=test-secret` so no AWS calls are needed.
+Tests mock the DynamoDB tables (`@patch("services.<name>.table")`). Auth is bypassed in tests: `conftest.py` overrides `get_current_user` to read the `sub` from an unverified token, and `tests/helpers.auth(sub)` builds the header — so tests never contact Clerk.
 
 Backend dependencies for the Lambda runtime live in `src/requirements.txt`; `requirements.txt` (repo root) is for the CDK toolchain + dev/test.
 
@@ -49,11 +49,8 @@ cdk diff
 
 Each service module (`src/services/*.py`) owns its own `boto3` DynamoDB table handle, read from an env var with a local-dev default (e.g. `os.environ.get("RECIPE_TABLE", "RecipeTable")`). These env vars are injected by `app_stack.py`. There is no ORM — items are plain dicts written with `put_item`.
 
-### Auth
-JWT bearer tokens (HS256). `dependencies.get_current_user` is the shared FastAPI dependency that decodes the token and returns the `user_id`; nearly every route depends on it. The signing key resolves via `utils/auth.get_jwt_secret()`: `JWT_SECRET_KEY` env var (local) → else the Secrets Manager secret named by `JWT_SECRET_ARN` (deployed). There is intentionally **no insecure default** — missing config raises. Passwords are hashed with `passlib` (`utils/security.py`). Ownership/authorization is enforced per-route by comparing `owner_id` to the caller (plus an `is_shareable` flag on recipes).
-
-### Secrets
-`utils/secrets.py` resolves any secret by env-var-holding-the-ARN, and caches values per-process (safe because a Lambda execution environment is reused). Both the JWT key and the reCAPTCHA v3 secret follow this pattern. reCAPTCHA enforcement is gated by the `ENFORCE_RECAPTCHA` env var (currently `"false"`).
+### Auth (Clerk)
+Auth is **Clerk**. The frontend uses Clerk for sign-in/up; the backend verifies Clerk's session JWT. `dependencies.get_current_user` fetches Clerk's public keys from its JWKS endpoint (`CLERK_ISSUER/.well-known/jwks.json`, cached), validates the RS256 signature + issuer + expiry + `azp`, and returns the Clerk user id (`sub`) — that id is the `owner_id`/`user_id` on all app data. **No shared secret**: verification uses public keys only (the Clerk *secret* key is not needed and not stored). Config: `CLERK_ISSUER`, `CLERK_AUTHORIZED_PARTIES` (env). Ownership is still enforced per-route by comparing `owner_id` to the caller (plus `is_shareable` on recipes). There is no UserTable, no password handling, and no `/users/login`|register|change-password — Clerk owns all of that; the only `/users` route is `DELETE /me`, which cascades app-data deletion.
 
 ### Meal plan & shopping list (the non-obvious domain logic)
 - **Meal plan** (`meal_plan_service.py`): one DynamoDB item per user holds *all* weeks, keyed by the week's start-date string (`YYYY-MM-DD`, validated by regex). `weeks[week]` is a list of entries.
@@ -64,7 +61,7 @@ JWT bearer tokens (HS256). `dependencies.get_current_user` is the shared FastAPI
 
 ## CDK stacks
 
-- **AppStack** — DynamoDB tables (User, Recipe, RecipeTag, Ingredient, MealPlan, ShoppingList), the `PythonFunction` Lambda built from `src/` (index `api.py`, handler `handler`, Python 3.12), Secrets Manager secrets (JWT, reCAPTCHA), and a proxy `LambdaRestApi`. Note tables have differing removal policies: Ingredient/MealPlan/ShoppingList are `RETAIN`, User is `DESTROY`. Table env vars + `ALLOWED_ORIGINS` (CORS) are set here.
+- **AppStack** — DynamoDB tables (Recipe, RecipeTag, Ingredient, MealPlan, ShoppingList — no UserTable; identity is in Clerk), the `PythonFunction` Lambda built from `src/` (index `api.py`, handler `handler`, Python 3.12), and a proxy `LambdaRestApi` with stage throttling. Ingredient/MealPlan/ShoppingList are `RETAIN`. Table env vars, `CLERK_ISSUER`/`CLERK_AUTHORIZED_PARTIES`, and `ALLOWED_ORIGINS` (CORS) are set here. No Secrets Manager (JWKS verification needs no secret).
 - **FrontendStack** — S3 + CloudFront hosting mirror, deployed from `forkstack-frontend/dist-cloudfront` (base-href `/`), with 403/404 → `/index.html` SPA fallback.
 
 ## Frontend deployment
@@ -74,9 +71,7 @@ The primary frontend deploy is **GitHub Pages** via `.github/workflows/` (builds
 ## Security invariants (don't regress)
 
 - `api.py` runs with `debug=False` and docs/OpenAPI disabled — don't re-enable in committed code (it leaks internals).
-- Passwords have a **10-char minimum** (`models/user.MIN_PASSWORD_LENGTH`), enforced on register and change-password; the register form mirrors it.
-- Login returns an identical `"Invalid username or password"` for unknown-user and wrong-password — keep it non-enumerable, and don't log attempted usernames.
-- Tokens carry a `ver` claim matched against the user's `token_version` in `get_current_user` (one GetItem/request). Changing a password bumps the version (invalidating old tokens; change-password reissues a fresh one), and a deleted account fails the lookup — don't drop this check.
+- Auth is Clerk (RS256/JWKS verification in `get_current_user`) — don't reintroduce homegrown passwords/JWTs. Password policy, login enumeration, and token-revocation concerns are Clerk's now.
 - `utils/parser._fetch_html` is SSRF-hardened: it validates every hop, **pins the connection to the validated IP** (DNS-rebind protection), and caps the body/content-type. Don't refactor it back to a plain `requests.get(url)`.
 
 ## Gotchas

@@ -5,7 +5,6 @@ from aws_cdk import (
     aws_lambda_python_alpha as lambda_python,
     aws_apigateway as apigateway,
     aws_dynamodb as dynamodb,
-    aws_secretsmanager as secretsmanager,
     RemovalPolicy,
 )
 from constructs import Construct
@@ -16,15 +15,8 @@ class AppStack(Stack):
     def __init__(self, scope: Construct, id: str, **kwargs):
         super().__init__(scope, id, **kwargs)
 
-        user_table = dynamodb.Table(
-            self,
-            "UserTable",
-            partition_key=dynamodb.Attribute(
-                name="user_id", type=dynamodb.AttributeType.STRING
-            ),
-            table_name="UserTable",
-            removal_policy=RemovalPolicy.DESTROY,
-        )
+        # User identity lives in Clerk now -- no UserTable. App data is keyed by
+        # the Clerk user id (the token `sub`).
 
         recipe_table = dynamodb.Table(
             self,
@@ -65,24 +57,15 @@ class AppStack(Stack):
             removal_policy=RemovalPolicy.RETAIN,
         )
 
-        # JWT signing key -- auto-generated, never checked into source.
-        jwt_secret = secretsmanager.Secret(
-            self,
-            "JwtSecret",
-            description="ForkStack JWT signing key",
-            generate_secret_string=secretsmanager.SecretStringGenerator(
-                password_length=48,
-                exclude_punctuation=True,
-            ),
-        )
-
-        # reCAPTCHA v3 server secret -- placeholder; populate with the real key
-        # via `aws secretsmanager put-secret-value` before enabling enforcement.
-        recaptcha_secret = secretsmanager.Secret(
-            self,
-            "RecaptchaSecret",
-            secret_name="forkstack/recaptcha",
-            description="ForkStack reCAPTCHA v3 secret key",
+        # Clerk owns auth. The backend only needs the issuer URL to fetch Clerk's
+        # public keys (JWKS) for token verification -- no secret. The publishable
+        # key is public and lives in the frontend build. Both values are
+        # non-sensitive, so they're plain env config here.
+        clerk_issuer = "https://mint-chow-13.clerk.accounts.dev"
+        frontend_origins = (
+            "https://issamna.github.io,"
+            "https://ds0s04vkdxys7.cloudfront.net,"
+            "http://localhost:5173"
         )
 
         entry = Path(__file__).resolve().parent.parent / "src"
@@ -100,31 +83,21 @@ class AppStack(Stack):
             memory_size=512,
             environment={
                 "RECIPE_TABLE": recipe_table.table_name,
-                "USER_TABLE": user_table.table_name,
                 "RECIPE_TAG_TABLE": recipe_tag_table.table_name,
                 "INGREDIENT_TABLE": ingredient_table.table_name,
                 "MEAL_PLAN_TABLE": meal_plan_table.table_name,
                 "SHOPPING_LIST_TABLE": shopping_list_table.table_name,
-                "JWT_SECRET_ARN": jwt_secret.secret_arn,
-                "RECAPTCHA_SECRET_ARN": recaptcha_secret.secret_arn,
-                # PREREQUISITE: the reCAPTCHA v3 server secret must be populated
-                # (`aws secretsmanager put-secret-value --secret-id
-                # forkstack/recaptcha --secret-string <key>`) BEFORE deploying
-                # this. With enforcement on and no secret, registration returns
-                # 500. The frontend site key is already wired in app.module.ts.
-                "ENFORCE_RECAPTCHA": "true",
-                "ALLOWED_ORIGINS": "https://issamna.github.io,https://ds0s04vkdxys7.cloudfront.net,http://localhost:4200",
+                "CLERK_ISSUER": clerk_issuer,
+                "CLERK_AUTHORIZED_PARTIES": frontend_origins,
+                "ALLOWED_ORIGINS": frontend_origins,
             },
         )
 
         recipe_table.grant_read_write_data(lambda_fn)
-        user_table.grant_read_write_data(lambda_fn)
         recipe_tag_table.grant_read_write_data(lambda_fn)
         ingredient_table.grant_read_write_data(lambda_fn)
         meal_plan_table.grant_read_write_data(lambda_fn)
         shopping_list_table.grant_read_write_data(lambda_fn)
-        jwt_secret.grant_read(lambda_fn)
-        recaptcha_secret.grant_read(lambda_fn)
 
         apigw = apigateway.LambdaRestApi(
             self,
@@ -135,8 +108,7 @@ class AppStack(Stack):
             # rate + burst so a runaway/abusive client can't drive Lambda cost
             # or exhaust capacity. This is a global bucket (not per-IP) -- the
             # free option. Per-IP rate limiting would need WAF (~$6/mo fixed),
-            # which isn't worth it here; registration is already reCAPTCHA-gated
-            # and login uses generic errors + a password-length minimum.
+            # which isn't worth it here; Clerk handles login/bot protection.
             deploy_options=apigateway.StageOptions(
                 throttling_rate_limit=25,
                 throttling_burst_limit=50,

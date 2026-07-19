@@ -3,10 +3,10 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from api import app
-from utils.auth import create_access_token
+from tests.helpers import auth
 
 client = TestClient(app)
-AUTH = {"Authorization": f"Bearer {create_access_token({'sub': 'u1'})}"}
+AUTH = auth("u1")
 
 # ingredient_id is set server-side; any value in the body is ignored.
 SAMPLE = {"ingredient_id": "ignored", "name": "Shallot"}

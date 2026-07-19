@@ -15,7 +15,7 @@ Runs rooted at `src/` — modules import as top-level (`from services import ...
 | Prefix | Router (`services/`) | Model (`models/`) | Table env var | Notes |
 |---|---|---|---|---|
 | `/recipes` | `recipe_service.py` | `recipe.py` (`RecipeIn/Out`, `URLIn`, `RecipeTag`) | `RECIPE_TABLE` | CRUD + `/search` + `/{id}/pdf` (base64) + `/parse-url` (URL import) |
-| `/users` | `user_service.py` | `user.py`, `token.py` | `USER_TABLE` | register, `/login` (form POST → JWT), `/me` GET/PATCH/DELETE, `/me/change-password` |
+| `/users` | `user_service.py` | — | — | only `DELETE /me` (cascades app-data deletion). Identity/login/profile are **Clerk**, not here. |
 | `/tags` | `tag_service.py` | `recipe.py::RecipeTag` | `RECIPE_TAG_TABLE` | list/get/create |
 | `/ingredients` | `ingredient_service.py` | `ingredient.py` | `INGREDIENT_TABLE` | shared **add-only** catalog (list/get/create; no PUT/DELETE); USDA-seeded |
 | `/meal-plan` | `meal_plan_service.py` | `meal_plan.py` | `MEAL_PLAN_TABLE` | GET/PUT by `?week=YYYY-MM-DD` |
@@ -24,12 +24,8 @@ Runs rooted at `src/` — modules import as top-level (`from services import ...
 Each service binds its own `boto3` table handle at **import time** (`table = dynamodb.Table(os.environ.get("X_TABLE", "default"))`) — tests patch `services.<name>.table`, not boto3.
 
 ### Shared backend pieces
-- `dependencies.py` — `get_current_user` (decodes JWT → `user_id`); nearly every route depends on it.
+- `dependencies.py` — `get_current_user` verifies the **Clerk** RS256 JWT against Clerk's JWKS (`CLERK_ISSUER`, cached) and returns the Clerk user id (`sub`); nearly every route depends on it. No shared secret. (There is no `utils/auth.py`/`security.py`/`recaptcha.py`/`secrets.py` — Clerk replaced homegrown auth.)
 - `utils/db.py` — `scan_all(table, **kwargs)`; every service scan goes through it (a raw `table.scan().get("Items")` silently truncates past 1 MB).
-- `utils/auth.py` — `create_access_token`, `get_jwt_secret` (env `JWT_SECRET_KEY` → else Secrets Manager `JWT_SECRET_ARN`; no insecure default).
-- `utils/secrets.py` — resolve a secret by env-var-holding-the-ARN, per-process cached.
-- `utils/security.py` — passlib `pbkdf2_sha256` hash/verify.
-- `utils/recaptcha.py` — v3 verify, gated by `ENFORCE_RECAPTCHA` (currently off).
 - `utils/parser.py` — `recipe_scraper(url)` (recipe-scrapers + BeautifulSoup); outbound HTTP, why Lambda timeout is 29s.
 - `utils/pdf.py` — `build_recipe_pdf` (reportlab).
 - `utils/ingredients.py` (`canonical_name/unit`, `clean_name`), `utils/quantity.py` (`parse_quantity`, `format_quantity`, `parse_servings`), `utils/categories.py` (`categorize` → grocery aisle) — the shopping-list aggregation stack.
@@ -57,7 +53,7 @@ App shell: `app.component.html` (navbar + dropdown menu + `<router-outlet>`).
 - **API base URL** lives in `src/environments/environment.ts` (`apiBase`); every service builds its endpoints from it. `AuthInterceptor` attaches the bearer token globally, so services don't set `Authorization` themselves.
 
 ## Infrastructure (`infrastructure/`, entry `app.py`)
-- `app_stack.py` — **AppStack**: 6 DynamoDB tables (User=DESTROY; Recipe/RecipeTag default; Ingredient/MealPlan/ShoppingList=RETAIN), `PythonFunction` Lambda from `src/` (`api.py::handler`, py3.12, 29s, 512MB), JWT + reCAPTCHA secrets, proxy `LambdaRestApi`. Table env vars + `ALLOWED_ORIGINS` set here.
+- `app_stack.py` — **AppStack**: 5 DynamoDB tables (Recipe/RecipeTag default; Ingredient/MealPlan/ShoppingList=RETAIN; no UserTable — identity is Clerk), `PythonFunction` Lambda from `src/` (`api.py::handler`, py3.12, 29s, 512MB), proxy `LambdaRestApi` with stage throttling. `CLERK_ISSUER`/`CLERK_AUTHORIZED_PARTIES` + table env vars + `ALLOWED_ORIGINS` set here. No Secrets Manager.
 - `frontend_stack.py` — **FrontendStack**: S3 + CloudFront, SPA 403/404→index fallback, deploys `forkstack-frontend/dist-cloudfront`.
 
 ## Known stubs (don't mistake for live)

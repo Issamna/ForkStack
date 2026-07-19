@@ -1,12 +1,12 @@
 from unittest.mock import patch
 from fastapi.testclient import TestClient
 from api import app
-from utils.auth import create_access_token
+from tests.helpers import auth
 
 client = TestClient(app)
 
 TEST_USER_ID = "test-user"
-AUTH = {"Authorization": f"Bearer {create_access_token({'sub': TEST_USER_ID})}"}
+AUTH = auth(TEST_USER_ID)
 
 sample_recipe = {
     "title": "Grilled Cheese",
