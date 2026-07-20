@@ -4,3 +4,4 @@ dist-cloudfront
 .env
 *.local
 .DS_Store
+*.tsbuildinfo

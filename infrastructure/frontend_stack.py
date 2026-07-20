@@ -13,11 +13,11 @@ from pathlib import Path
 
 
 class FrontendStack(Stack):
-    """S3 + CloudFront hosting for the Angular frontend.
+    """S3 + CloudFront hosting for the React frontend.
 
     Mirror of the GitHub Pages site so the app stays reachable independent of
-    GitHub's Pages deployment pipeline. Built from
-    forkstack-frontend/dist-cloudfront (base-href "/").
+    GitHub's Pages deployment pipeline. Built from web/dist-cloudfront (Vite
+    build with base "/").
     """
 
     def __init__(self, scope: Construct, id: str, **kwargs):
@@ -37,15 +37,21 @@ class FrontendStack(Stack):
         # promoted to an enforcing Content-Security-Policy. NB: these apply only
         # to the CloudFront copy -- the primary GitHub Pages deployment can't set
         # custom response headers.
+        # Clerk loads its JS from and talks to the instance's Frontend API
+        # (*.clerk.accounts.dev for a dev instance) and renders components in a
+        # worker/iframe, so those origins are allowed for script/connect/frame/
+        # worker/img. The API Gateway origin is allowed for connect.
+        clerk = "https://*.clerk.accounts.dev"
+        api = "https://e6q9keyixh.execute-api.us-east-1.amazonaws.com"
         csp = (
             "default-src 'self'; "
-            "script-src 'self' https://www.google.com https://www.gstatic.com; "
+            f"script-src 'self' 'unsafe-eval' {clerk}; "
             "style-src 'self' 'unsafe-inline'; "
-            "img-src 'self' data:; "
+            f"img-src 'self' data: {clerk} https://img.clerk.com; "
             "font-src 'self'; "
-            "connect-src 'self' "
-            "https://e6q9keyixh.execute-api.us-east-1.amazonaws.com; "
-            "frame-src https://www.google.com; "
+            f"connect-src 'self' {api} {clerk}; "
+            f"worker-src 'self' blob:; "
+            f"frame-src 'self' {clerk}; "
             "object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
         )
         security_headers = cloudfront.ResponseHeadersPolicy(
@@ -105,9 +111,7 @@ class FrontendStack(Stack):
             ],
         )
 
-        dist_dir = (
-            Path(__file__).parent.parent / "forkstack-frontend" / "dist-cloudfront"
-        )
+        dist_dir = Path(__file__).parent.parent / "web" / "dist-cloudfront"
         s3_deployment.BucketDeployment(
             self,
             "FrontendDeployment",

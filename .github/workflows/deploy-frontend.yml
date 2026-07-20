@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: forkstack-frontend
+        working-directory: web
     steps:
       - uses: actions/checkout@v4
 
@@ -29,12 +29,13 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      # baseHref (/ForkStack/) is set in angular.json; production is the default.
+      # Vite base '/ForkStack/' is set for production mode in vite.config.ts;
+      # build-time env (Clerk key, API base) comes from web/.env.production.
       - name: Build
-        run: npx ng build
+        run: npm run build
 
       # GitHub Pages serves 404.html for unknown paths; make it the SPA shell so
-      # deep links like /ForkStack/login work on refresh.
+      # deep links like /ForkStack/recipes work on refresh.
       - name: Add SPA 404 fallback
         run: cp dist/index.html dist/404.html
 
@@ -42,5 +43,5 @@ jobs:
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./forkstack-frontend/dist
+          publish_dir: ./web/dist
           publish_branch: gh-pages
