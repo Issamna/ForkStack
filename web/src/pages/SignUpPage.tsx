@@ -3,7 +3,12 @@ import { SignUp } from "@clerk/clerk-react";
 export default function SignUpPage() {
   return (
     <div className="page-wrapper">
-      <SignUp signInUrl="/sign-in" fallbackRedirectUrl="/recipes" />
+      <SignUp
+        routing="path"
+        path="/sign-up"
+        signInUrl="/sign-in"
+        fallbackRedirectUrl="/recipes"
+      />
     </div>
   );
 }
