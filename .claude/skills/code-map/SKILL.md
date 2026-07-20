@@ -1,12 +1,12 @@
 ---
 name: code-map
-description: Map of ForkStack's backend routers/services/models, frontend Angular pages/services, and CDK stacks. Read instead of running find/ls/grep to locate where a feature lives. Update it when adding or moving a router, service, model, page, or table.
+description: Map of ForkStack's backend routers/services/models, React frontend pages/lib, and CDK stacks. Read instead of running find/ls/grep to locate where a feature lives. Update it when adding or moving a router, service, model, page, or table.
 ---
 
 # Code map
 
-Two apps in one repo: FastAPI backend in `src/` (one Lambda), Angular 16 frontend in `forkstack-frontend/`. CDK (`infrastructure/`) deploys both.
-**Maintenance: if you add/move/delete a router, service, model, page, Angular service, or DynamoDB table, update this file in the same PR.**
+Two apps in one repo: FastAPI backend in `src/` (one Lambda), React (Vite) frontend in `web/`. Auth is Clerk. CDK (`infrastructure/`) deploys both.
+**Maintenance: if you add/move/delete a router, service, model, React page, `lib/api` method, or DynamoDB table, update this file in the same PR.**
 
 ## Backend (`src/`)
 
@@ -31,30 +31,25 @@ Each service binds its own `boto3` table handle at **import time** (`table = dyn
 - `utils/ingredients.py` (`canonical_name/unit`, `clean_name`), `utils/quantity.py` (`parse_quantity`, `format_quantity`, `parse_servings`), `utils/categories.py` (`categorize` → grocery aisle) — the shopping-list aggregation stack.
 - `scripts/` — one-off USDA import / tag backfill tooling (hard-coded keys/URLs; **not** in the request path).
 
-## Frontend (`forkstack-frontend/src/app/`)
+## Frontend (`web/`, React 19 + Vite + TypeScript + Tailwind)
 
-Root `AppModule` declares login/register/forgot-password/account/meal-plan/shopping-list; `recipes/` is a **lazy-loaded feature module** (`recipes.module.ts`). Routes in `app-routing.module.ts`; `AuthGuard` protects recipes, account, meal-plan, shopping-list. `AuthInterceptor` attaches the bearer token to every request and logs out on 401.
+`web/src/main.tsx` mounts `<ClerkProvider>` (publishable key from `VITE_CLERK_PUBLISHABLE_KEY`) around the router. `web/src/router.tsx` defines routes; `components/RequireAuth.tsx` (Clerk `<SignedIn>`/`<RedirectToSignIn>`) gates the app routes. `web/src/App.tsx` is the shell (navbar: logo, add-recipe, meal-plan, shopping-list icons, Clerk `<UserButton>`).
 
-| Route | Component dir |
+| Route | Page (`web/src/pages/`) |
 |---|---|
 | `/` → `/recipes` | — (redirect) |
-| `/recipes`, `/recipes/new`, `/recipes/:id`, `/recipes/:id/edit` | `recipes/` (`recipes-routing.module.ts`; detail + `recipe-form/`) |
-| `/login`, `/register`, `/forgot-password` | `login/`, `register/`, `forgot-password/` (forgot = stub, no backend) |
-| `/account` | `account/` |
-| `/meal-plan` | `meal-plan/` |
-| `/shopping-list` | `shopping-list/` |
+| `/sign-in/*`, `/sign-up/*` | `SignInPage`, `SignUpPage` (embedded Clerk `<SignIn>`/`<SignUp>`) |
+| `/recipes`, `/recipes/new`, `/recipes/:id`, `/recipes/:id/edit` | `RecipesPage`, `RecipeFormPage`, `RecipeDetailPage` |
+| `/meal-plan` | `MealPlanPage` |
+| `/shopping-list` | `ShoppingListPage` |
+| `/account` | `AccountPage` (Clerk `<UserProfile>`; not in nav — reachable via the UserButton) |
 
-App shell: `app.component.html` (navbar + dropdown menu + `<router-outlet>`).
-
-### Angular services (`app/services/` and feature dirs)
-- `services/auth.service.ts` — login/register/me/password/delete; token in `localStorage`; `getUserId`/`isTokenExpired` decode the JWT client-side.
-- `services/image-helper.service.ts` — tag image selection.
-- `recipes/recipe.service.ts`, `meal-plan/meal-plan.service.ts`, `shopping-list/shopping-list.service.ts` — per-domain HTTP.
-- **API base URL** lives in `src/environments/environment.ts` (`apiBase`); every service builds its endpoints from it. `AuthInterceptor` attaches the bearer token globally, so services don't set `Authorization` themselves.
+### Frontend lib (`web/src/lib/`)
+- `api.ts` — the single typed fetch layer (`api.recipes/mealPlan/shoppingList/users`); attaches the Clerk session token (`window.Clerk.session.getToken()`) to every request. Base URL from `VITE_API_BASE` (falls back to the deployed API Gateway).
+- `types.ts` — the API contract interfaces (Recipe, MealEntry, ShoppingItem, Tag).
+- `imageHelper.ts` — `imageForTags(tags, seed)`, deterministic tag→image pick (seed by recipe id so grids don't flicker).
+- Identity comes from Clerk's `useAuth().userId`; ownership-aware UI compares it to `recipe.owner_id`.
 
 ## Infrastructure (`infrastructure/`, entry `app.py`)
 - `app_stack.py` — **AppStack**: 5 DynamoDB tables (Recipe/RecipeTag default; Ingredient/MealPlan/ShoppingList=RETAIN; no UserTable — identity is Clerk), `PythonFunction` Lambda from `src/` (`api.py::handler`, py3.12, 29s, 512MB), proxy `LambdaRestApi` with stage throttling. `CLERK_ISSUER`/`CLERK_AUTHORIZED_PARTIES` + table env vars + `ALLOWED_ORIGINS` set here. No Secrets Manager.
-- `frontend_stack.py` — **FrontendStack**: S3 + CloudFront, SPA 403/404→index fallback, deploys `forkstack-frontend/dist-cloudfront`.
-
-## Known stubs (don't mistake for live)
-- `/forgot-password` has no backend — the component shows a "coming soon" message.
+- `frontend_stack.py` — **FrontendStack**: S3 + CloudFront, SPA 403/404→index fallback, security-headers policy (CSP Report-Only, allows Clerk), deploys `web/dist-cloudfront`.

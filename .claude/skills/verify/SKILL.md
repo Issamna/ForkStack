@@ -1,11 +1,11 @@
 ---
 name: verify
-description: How to run and drive ForkStack to observe a change working — backend tests (pytest), running the Angular app locally against the deployed API, and Chrome automation. Read before claiming a change works.
+description: How to run and drive ForkStack to observe a change working — backend tests (pytest), running the React app locally, and Chrome automation. Read before claiming a change works.
 ---
 
 # Verifying changes in the running app
 
-There is **no local backend stack** (no uvicorn/moto/docker-compose configured). The backend is verified two ways: unit tests (mocked DynamoDB), and — for end-to-end — the Angular app runs locally and talks to the **deployed** API Gateway. Choose based on what changed.
+Choose by what changed: backend logic → pytest (mocked DynamoDB); anything user-facing → the React app + Chrome.
 
 ## Backend logic → pytest (from `src/`)
 
@@ -16,26 +16,40 @@ python -m pytest tests/unit/test_shopping_list.py -q
 python -m pytest tests/unit/test_recipies.py::TestRecipeAPI::test_create_recipe
 ```
 
-Tests use `TestClient(app)`, mint real JWTs via `create_access_token`, and **patch the module-level table handle** (`@patch("services.recipe_service.table")`) — so assert against `mock_table.put_item` / `get_item` calls, not a real DB. `conftest.py` sets `JWT_SECRET_KEY=test-secret`; no AWS calls happen. This is the fast inner loop for parser/quantity/category/shopping-list logic.
+Tests use `TestClient(app)` and **patch the module-level table handle** (`@patch("services.recipe_service.table")`) — assert against `mock_table.put_item`/`get_item`, not a real DB. Auth is bypassed: `conftest.py` overrides `get_current_user` (reads `sub` from an unverified token), and `tests/helpers.auth(sub)` builds the header — no Clerk contact, no AWS calls. Fast inner loop for parser/quantity/category/shopping-list logic.
 
-## End-to-end → Angular app + Chrome
-
-The frontend services point at the **production** API Gateway (`https://…/prod`), and `http://localhost:4200` is in the backend's `ALLOWED_ORIGINS`, so:
+## End-to-end → React app + Chrome
 
 ```bash
-cd forkstack-frontend
+cd web
 npm install        # first time only
-npm start          # ng serve → http://localhost:4200
+npm run dev        # Vite → http://localhost:5173
 ```
 
-Then drive it with the Chrome extension (`tabs_context_mcp` first, then `navigate`/`computer`/`read_page`). Log in through the UI to get a real token in `localStorage` (reCAPTCHA is disabled server-side, so a throwaway account can be registered). Probe APIs from the signed-in tab via `javascript_tool` fetch (the token is in `localStorage['access_token']`) — curl can't auth.
+`web/.env` sets `VITE_CLERK_PUBLISHABLE_KEY` and `VITE_API_BASE`. Drive with the Chrome extension (`tabs_context_mcp` first, then `navigate`/`computer`/`read_page`). **Sign-in is Clerk and must be done by the user** (entering credentials / creating accounts is off-limits to the agent) — ask them to sign in, then proceed. Get the session token in the signed-in tab via `await window.Clerk.session.getToken()`; note a `javascript_tool` fetch runs in an isolated origin and can hit CORS, so prefer reading the app's own network calls (`read_network_requests`) over manual fetches.
 
-> ⚠️ **This hits real prod DynamoDB.** It's currently a test dataset, but treat writes as real: prefer a dedicated test account, clean up recipes/meal-plans/shopping-lists you create, and never bulk-delete. There is no separate staging backend today.
+### Full local stack (backend + frontend), when the deployed backend won't do
+
+The deployed backend may lag the code (e.g. mid-migration). To exercise the current backend end-to-end, run it locally against the **real** DynamoDB tables and point the app at it:
+
+```bash
+# real table names: aws dynamodb list-tables (they're AppStack-<Table>-<suffix>)
+cd src && RECIPE_TABLE=... RECIPE_TAG_TABLE=... INGREDIENT_TABLE=... \
+  MEAL_PLAN_TABLE=... SHOPPING_LIST_TABLE=... \
+  CLERK_ISSUER=https://<instance>.clerk.accounts.dev \
+  CLERK_AUTHORIZED_PARTIES=http://localhost:5173 ALLOWED_ORIGINS=http://localhost:5173 \
+  AWS_REGION=us-east-1 uvicorn api:app --port 8000
+# then set VITE_API_BASE=http://localhost:8000 in web/.env and restart Vite
+```
+
+Needs `uvicorn` (in the venv) and AWS creds (present). Clerk **dev** instances allow localhost with no origin config.
+
+> ⚠️ **This hits real prod DynamoDB.** It's a test dataset, but treat writes as real: prefer read-only checks, clean up anything you create, never bulk-delete. There is no separate staging backend today. Deploying the backend (`cdk deploy AppStack`) is the alternative but it's the owner's call.
 
 ## Evidence
 
-- For persistence claims, **reload the page** and re-fetch — Angular keeps optimistic client state that can mask a failed write.
-- Check `read_network_requests` for the actual request/response and status codes; check the browser console (`read_console_messages`) for errors. Lambda/API errors surface as 4xx/5xx JSON `{detail: ...}`.
+- For persistence claims, **reload the page** and re-fetch — React keeps optimistic client state that can mask a failed write.
+- Check `read_network_requests` for real status codes (backend errors are 4xx/5xx JSON `{detail: ...}`); `read_console_messages` for JS errors.
 - Screenshots via the `computer` tool for UI/layout claims.
 - When only backend logic changed and there's no UI surface, pytest is sufficient — don't spin up the browser for a parser tweak.
 

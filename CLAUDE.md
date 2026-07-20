@@ -4,14 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-ForkStack is a personal recipe app: a FastAPI backend running as a single AWS Lambda (behind API Gateway), an Angular frontend, and AWS CDK (Python) as the infrastructure-as-code layer. Features span recipes (CRUD, URL import, PDF export, tags), users/auth, meal planning, and shopping-list generation.
+ForkStack is a personal recipe app: a FastAPI backend running as a single AWS Lambda (behind API Gateway), a React (Vite) frontend, and AWS CDK (Python) as the infrastructure-as-code layer. Auth is **Clerk**. Features span recipes (CRUD, URL import, PDF export, tags), meal planning, and shopping-list generation.
 
 ## Repository layout
 
 - `src/` — FastAPI backend (the Lambda deployment package). This is a self-rooted Python package: modules import each other as top-level (`from services import ...`, `from api import app`), so **the backend runs with `src/` as the working directory / import root**, not the repo root.
 - `infrastructure/` — CDK stack definitions (`app_stack.py` = backend, `frontend_stack.py` = frontend hosting).
 - `app.py` + `cdk.json` — CDK app entrypoint (`python3 app.py`).
-- `forkstack-frontend/` — Angular 16 app (this is the real frontend; the React dependencies in the **root** `package.json` are vestigial and unused).
+- `web/` — React 19 + Vite frontend (TypeScript, Tailwind, Clerk for auth). Pages in `web/src/pages/`, the typed fetch layer in `web/src/lib/api.ts`.
 
 ## Commands
 
@@ -26,13 +26,14 @@ Tests mock the DynamoDB tables (`@patch("services.<name>.table")`). Auth is bypa
 
 Backend dependencies for the Lambda runtime live in `src/requirements.txt`; `requirements.txt` (repo root) is for the CDK toolchain + dev/test.
 
-### Frontend (run from `forkstack-frontend/`)
+### Frontend (run from `web/`)
 ```bash
 npm install
-npm start          # ng serve, dev server on http://localhost:4200
-npm run build      # production build -> dist/
-npm test           # Karma/Jasmine
+npm run dev              # Vite dev server on http://localhost:5173
+npm run build           # production build (base /ForkStack/) -> dist/
+npm run build:cloudfront # base / build -> dist-cloudfront/ (for FrontendStack)
 ```
+`web/.env` (gitignored) holds local dev config; `web/.env.production` (committed — the Clerk publishable key is public) holds the deploy build's Clerk key + API base. Requires a Clerk publishable key (`VITE_CLERK_PUBLISHABLE_KEY`).
 
 ### Infrastructure (run from repo root)
 ```bash
@@ -62,11 +63,11 @@ Auth is **Clerk**. The frontend uses Clerk for sign-in/up; the backend verifies 
 ## CDK stacks
 
 - **AppStack** — DynamoDB tables (Recipe, RecipeTag, Ingredient, MealPlan, ShoppingList — no UserTable; identity is in Clerk), the `PythonFunction` Lambda built from `src/` (index `api.py`, handler `handler`, Python 3.12), and a proxy `LambdaRestApi` with stage throttling. Ingredient/MealPlan/ShoppingList are `RETAIN`. Table env vars, `CLERK_ISSUER`/`CLERK_AUTHORIZED_PARTIES`, and `ALLOWED_ORIGINS` (CORS) are set here. No Secrets Manager (JWKS verification needs no secret).
-- **FrontendStack** — S3 + CloudFront hosting mirror, deployed from `forkstack-frontend/dist-cloudfront` (base-href `/`), with 403/404 → `/index.html` SPA fallback.
+- **FrontendStack** — S3 + CloudFront hosting mirror, deployed from `web/dist-cloudfront` (Vite base `/`), with 403/404 → `/index.html` SPA fallback and a security-headers policy (CSP is Report-Only, allows Clerk's Frontend API).
 
 ## Frontend deployment
 
-The primary frontend deploy is **GitHub Pages** via `.github/workflows/` (builds with base-href `/ForkStack/`, publishes to the `gh-pages` branch, copies `index.html`→`404.html` for SPA deep links). CloudFront (FrontendStack) is a secondary mirror built with base-href `/`. The frontend targets the deployed API Gateway URL hard-coded in the Angular services' `apiUrl` (e.g. `recipe.service.ts`, `auth.service.ts`) — update those when the API endpoint changes.
+The primary frontend deploy is **GitHub Pages** via `.github/workflows/deploy-frontend.yml` (builds `web/` with Vite base `/ForkStack/`, publishes to the `gh-pages` branch, copies `index.html`→`404.html` for SPA deep links). CloudFront (FrontendStack) is a secondary mirror built with base `/`. The API base URL comes from `VITE_API_BASE` (`web/.env.production` for deploys; `web/src/lib/api.ts` falls back to the deployed API Gateway) — update it there when the API endpoint changes. Clerk **dev** instances work on any origin (localhost + GitHub Pages) with no origin config; a Clerk **production** instance would need a custom domain (CloudFront, not bare GitHub Pages).
 
 ## Security invariants (don't regress)
 
@@ -78,5 +79,5 @@ The primary frontend deploy is **GitHub Pages** via `.github/workflows/` (builds
 
 - Because service modules bind their table handle at import time, tests patch the module-level `table` object, not `boto3`.
 - List/search/login/dedupe use `table.scan()` + in-memory filtering rather than queries/indexes. All scans go through `utils/db.scan_all` (follows `LastEvaluatedKey`); a raw `table.scan().get("Items")` would silently truncate past 1 MB, so use the helper. GSIs on `username`/`email`/`owner_id` are still a worthwhile follow-up for performance.
-- The frontend API base URL lives in `forkstack-frontend/src/environments/environment.ts` (`apiBase`); services build endpoints from it. `AuthInterceptor` attaches the bearer token globally, so services don't set `Authorization` themselves.
+- All frontend API calls go through `web/src/lib/api.ts`, which attaches the Clerk session token (`window.Clerk.session.getToken()`) to every request. Response shapes are the interfaces in `web/src/lib/types.ts`.
 - `src/scripts/` (USDA ingredient importers) are one-off backfill tooling, not part of the request path. They read `USDA_API_KEY`/`FORKSTACK_API_URL` from the env.

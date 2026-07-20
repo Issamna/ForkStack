@@ -1,6 +1,6 @@
 ---
 name: finalize
-description: Ship checklist for ForkStack — checks, docs to sync, commit and deploy flow for the FastAPI backend and Angular frontend. Run when a change is code-complete.
+description: Ship checklist for ForkStack — checks, docs to sync, commit and deploy flow for the FastAPI backend and React frontend. Run when a change is code-complete.
 ---
 
 # Finalizing a change
@@ -13,9 +13,9 @@ Backend (from `src/`):
 ```bash
 cd src && python -m pytest -q
 ```
-Frontend (from `forkstack-frontend/`) — for any frontend change:
+Frontend (from `web/`) — for any frontend change:
 ```bash
-npm run build         # production build must succeed (catches template/TS errors)
+npm run build         # tsc -b + vite build must succeed (catches TS/type errors)
 ```
 Infra — for any `infrastructure/` or `src/` change that affects deploy:
 ```bash
@@ -25,12 +25,12 @@ cdk diff AppStack     # sanity-check the delta
 
 ## 2. Verify at runtime
 
-Use the `verify` skill. Backend-logic-only changes: pytest is enough. Anything user-facing: run `ng serve` and drive the flow in the browser against the deployed API, confirm the write persisted on reload.
+Use the `verify` skill. Backend-logic-only changes: pytest is enough. Anything user-facing: run `npm run dev` (Vite) and drive the flow in the browser, confirm the write persisted on reload.
 
 ## 3. Sync docs (same commit)
 
 - **`CLAUDE.md`** — non-obvious behavior/conventions the next agent needs.
-- **`code-map` skill** (`.claude/skills/code-map/SKILL.md`) — any new/moved router, service, model, page, Angular service, or DynamoDB table.
+- **`code-map` skill** (`.claude/skills/code-map/SKILL.md`) — any new/moved router, service, model, React page, `lib/api` method, or DynamoDB table.
 - **`ui-conventions` skill** — only if you introduced a new shared class or pattern.
 - `README.md` — only if setup/architecture changed materially.
 
@@ -56,4 +56,4 @@ Two independent deploy paths; **don't trigger either without the owner asking**:
 
 ## 6. After deploy
 
-If `cdk deploy AppStack` recreated the API Gateway (new `execute-api` URL), the hard-coded `apiUrl` in the four Angular services must be updated and the frontend rebuilt/redeployed. A proxy `LambdaRestApi` keeps its URL across code-only Lambda updates, so this is only a concern on stack replacement.
+If `cdk deploy AppStack` recreated the API Gateway (new `execute-api` URL), update `VITE_API_BASE` in `web/.env.production` (and the fallback in `web/src/lib/api.ts`) and rebuild/redeploy the frontend. A proxy `LambdaRestApi` keeps its URL across code-only Lambda updates, so this is only a concern on stack replacement.

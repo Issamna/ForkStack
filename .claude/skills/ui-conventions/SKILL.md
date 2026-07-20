@@ -1,67 +1,49 @@
 ---
 name: ui-conventions
-description: ForkStack Angular + Tailwind UI patterns — component skeleton, the custom color palette, the shared @apply utility classes, services/auth wiring. Read before writing or editing any component instead of re-reading existing ones for style.
+description: ForkStack React + Tailwind UI patterns — page structure, the custom color palette, shared @apply classes, the api layer, and Clerk auth. Read before writing or editing a page/component instead of re-reading existing ones for style.
 ---
 
 # UI conventions
 
-Angular 16, module-based (NgModules, not standalone components), Tailwind for styling. Match what's already here — reuse the shared classes, don't invent new palettes.
+React 19 + Vite + TypeScript, Tailwind for styling, Clerk for auth. Function components with hooks. Match what's already in `web/src/` — reuse the shared classes, don't invent new palettes.
 
-## Component skeleton
+## Page structure
 
-Components are class-based with an external template (`templateUrl`) and usually an external `.scss`. Standard data-loading shape:
+Pages live in `web/src/pages/`, one default-exported component each, wired in `web/src/router.tsx`. Standard data-loading shape:
 
-```ts
-export class FooComponent implements OnInit {
-  items: Foo[] = [];
-  loading = true;
+```tsx
+const [items, setItems] = useState<Foo[]>([]);
+const [loading, setLoading] = useState(true);
 
-  constructor(private fooService: FooService, private auth: AuthService) {}
-
-  ngOnInit(): void { this.load(); }
-
-  load(): void {
-    this.loading = true;
-    this.fooService.getAll().subscribe((data) => {
-      this.items = data;
-      this.loading = false;
-    });
-  }
-}
+useEffect(() => {
+  api.foo.list().then(setItems).catch(() => setItems([])).finally(() => setLoading(false));
+}, []);
 ```
 
-- Components subscribe to service Observables directly (no async pipe convention established; template `*ngIf`/`*ngFor` throughout).
-- Feature areas that warrant their own module + lazy route follow the `recipes/` pattern (`recipes.module.ts` + `recipes-routing.module.ts`); simple pages are declared in the root `AppModule`.
-- New root-declared components must be added to `AppModule.declarations`.
+- Loading + empty states are explicit (`loading && ...`, `!loading && items.length === 0 && ...`) — see `RecipesPage`.
+- Container widths: recipes list `max-w-6xl`, detail/meal-plan `max-w-4xl`, shopping-list `max-w-2xl`, all `mx-auto px-4 py-8`.
+- Prefer local `useState`/`useMemo`; no global store. Cross-render stability where it matters (e.g. deterministic images via `imageForTags(tags, recipeId)`).
 
-## Palette (Tailwind theme — `tailwind.config.js`)
+## Palette (Tailwind theme — `web/tailwind.config.js`)
 
-Custom named colors — **use these, not raw Tailwind color scales**:
-- `primary` `#2E4057` (deep slate blue) · `accent` `#A8C686` (sage green, the hover/interactive color) · `sage` `#6C7A61`
+Custom named colors — **use these, not raw Tailwind scales**:
+- `primary` `#2E4057` · `accent` `#A8C686` (the hover/interactive color) · `sage` `#6C7A61`
 - `background` `#FAF9F6` (warm cream page bg) · `textgray` `#4A4A4A` (default text)
-- The interaction idiom is: neutral `textgray` element → **`hover:` turns it `accent`**. Follow it.
-- **There is no dark mode.** Don't add `dark:` variants.
+- Idiom: neutral `textgray` element → **`hover:` turns it `accent`**. **No dark mode** — don't add `dark:` variants.
 
-## Shared `@apply` classes (`src/styles/_forkstack.scss`)
+## Shared `@apply` classes (`web/src/index.css`)
 
-Prefer these semantic classes over ad-hoc utility soup. Available:
-- Layout: `.page-wrapper`, `.card-box`, `.card-box`
-- Headings: `.heading-primary`, `.heading-secondary`, `.text-subtle`
-- Forms/buttons: `.form-input`, `.button-primary`, `.pagination-button`
-- Nav (app shell): `.navbar`, `.logo-*`, `.add-button`, `.nav-button`, `.dropdown-menu`, `.dropdown-item`, `.tooltip`
-- Recipes: `.recipe-grid`, `.recipe-tile`, `.recipe-image`, `.recipe-title`, `.search-bar`, `.search-input`, `.search-icon-button`
-- Meal plan: `.meal-card`, `.badge`
+Prefer these over ad-hoc utility soup: `.navbar`, `.logo-*`, `.add-button` (nav); `.page-wrapper`, `.card-box` (layout); `.heading-primary`, `.heading-secondary`, `.text-subtle` (type); `.form-input`, `.button-primary`, `.pagination-button` (forms); `.recipe-grid`/`.recipe-tile`/`.search-input`, `.meal-card`, `.badge`. Add new reusable patterns here rather than repeating utility strings.
 
-If a new reusable pattern emerges, add a class here rather than repeating utility strings across templates.
+## Data access
 
-## Data access & auth
+All API calls go through `api.<domain>.<method>` in `web/src/lib/api.ts` — never raw `fetch` in a component. It attaches the Clerk token automatically. Adding an endpoint = add the method in `api.ts` (and the shape in `lib/types.ts`). On error it throws `ApiError` with `.status` and `.message` (the backend's `detail`) — surface `.message` to users (e.g. the URL-import error).
 
-- One Angular service per domain (`recipe.service.ts`, `auth.service.ts`, `meal-plan.service.ts`, `shopping-list.service.ts`). API calls go through the service, never raw `HttpClient` in a component.
-- **`AuthInterceptor` already attaches the bearer token to every request** and logs out on 401 — you do **not** need to add `Authorization` headers manually (some older services still do via `authHeaders()`; don't copy that, rely on the interceptor).
-- Token lives in `localStorage['access_token']`; `AuthService.getUserId()`/`isTokenExpired()` decode the JWT client-side. Ownership-aware UI reads `auth.getUserId()` and compares to `recipe.owner_id`.
-- The "shared cookbook" model is real: recipe list has **Mine / Discover** tabs — Discover shows other users' `is_shareable` recipes (read-only, no edit/delete controls).
-- **API base URL** comes from `src/environments/environment.ts` (`apiBase`) — a new service imports it and builds `` `${environment.apiBase}/<domain>` ``. Don't hard-code the URL.
+## Auth (Clerk)
 
-## Forms
+- `useAuth()` → `userId` (the Clerk user id, = `owner_id` on data). `useUser()` for profile. Ownership-aware UI compares `userId` to `recipe.owner_id`.
+- Protected routes are wrapped by `components/RequireAuth.tsx`; don't re-implement guards. Sign-in/up are Clerk's embedded `<SignIn>`/`<SignUp>`; account management is `<UserButton>`/`<UserProfile>` — don't build custom auth forms.
 
-Two styles coexist: template-driven (`FormsModule`, `[(ngModel)]`) in simpler pages and reactive (`ReactiveFormsModule`, `FormBuilder`) in auth pages. Match the file you're editing; don't convert one to the other as a side effect.
+## Modals & forms
+
+Modals are conditional JSX with `fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50` + a white `rounded-lg` panel (see the delete-confirm in `RecipeDetailPage` and the import modal in `RecipeFormPage`). Forms are controlled inputs (`value`/`onChange`), local state, validate on submit.
