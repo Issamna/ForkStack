@@ -24,6 +24,7 @@ export default function Layout() {
             to="/meal-plan"
             className="add-button ml-2"
             aria-label="Meal plan"
+            title="Meal plan"
           >
             <svg
               className="h-7 w-7 sm:h-9 sm:w-9"
@@ -40,20 +41,28 @@ export default function Layout() {
               <line x1="3" y1="10" x2="21" y2="10" />
             </svg>
           </Link>
-        </div>
-        <div className="absolute right-4 top-3 flex items-center gap-4">
           <Link
             to="/shopping-list"
-            className="text-sm font-semibold text-textgray hover:text-accent"
+            className="add-button ml-2"
+            aria-label="Shopping list"
+            title="Shopping list"
           >
-            Shopping list
+            <svg
+              className="h-7 w-7 sm:h-9 sm:w-9"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              viewBox="0 0 24 24"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="9" cy="21" r="1" />
+              <circle cx="20" cy="21" r="1" />
+              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+            </svg>
           </Link>
-          <Link
-            to="/account"
-            className="text-sm font-semibold text-textgray hover:text-accent"
-          >
-            Account
-          </Link>
+        </div>
+        <div className="absolute right-4 top-3 flex items-center gap-4">
           <UserButton />
         </div>
       </nav>
