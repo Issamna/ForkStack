@@ -1,0 +1,27 @@
+{
+  "name": "fork-stack — a minimal recipe book",
+  "short_name": "fork-stack",
+  "description": "Your recipes, your week's plan, and the shopping list that falls out of it.",
+  "start_url": "recipes",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#FBF7EF",
+  "theme_color": "#C0563A",
+  "categories": ["food", "lifestyle", "productivity"],
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    {
+      "src": "icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
