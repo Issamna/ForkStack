@@ -33,11 +33,18 @@ function parse(raw: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+/** Below this, a fraction reads naturally ("1 1/4 tbsp"); above it, absurd. */
+const FRACTION_CEILING = 10;
+
 function format(n: number): string {
   if (!Number.isFinite(n)) return "";
   if (Number.isInteger(n)) return String(n);
 
-  // Prefer a familiar kitchen fraction over 0.33.
+  // Large amounts are weights and volumes -- "437 1/2 g" is nobody's idea of a
+  // measurement. Round those to whole units and keep fractions for the small
+  // spoon-and-cup quantities they actually suit.
+  if (n >= FRACTION_CEILING) return String(Math.round(n));
+
   const whole = Math.floor(n);
   const rest = n - whole;
   for (const [label, value] of Object.entries(FRACTIONS)) {
