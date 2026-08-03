@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api, ApiError } from "../lib/api";
 import { imageForTags } from "../lib/imageHelper";
 import { ACCEPTED_TYPES, uploadRecipePhoto } from "../lib/photoUpload";
+import { getDefaultPublic, getDefaultServings } from "../lib/preferences";
 import type { Ingredient, InstructionStep, Tag } from "../lib/types";
 
 const emptyIngredient = (): Ingredient => ({
@@ -55,8 +56,13 @@ export default function RecipeFormPage() {
   const [instructions, setInstructions] = useState<InstructionStep[]>([
     { step_number: 1, text: "" },
   ]);
-  const [isShareable, setIsShareable] = useState(false);
-  const [servings, setServings] = useState<number | "">("");
+  // New recipes start from the account defaults; editing loads the recipe.
+  const [isShareable, setIsShareable] = useState(() =>
+    id ? false : getDefaultPublic(),
+  );
+  const [servings, setServings] = useState<number | "">(() =>
+    id ? "" : getDefaultServings(),
+  );
   const [totalTime, setTotalTime] = useState<number | "">("");
   const [recipeUrl, setRecipeUrl] = useState("");
   const [isParsing, setIsParsing] = useState(false);

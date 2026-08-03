@@ -4,6 +4,7 @@ import { api } from "../lib/api";
 import { CATEGORY_ORDER, categoryLabel } from "../lib/categories";
 import { recipeImage } from "../lib/imageHelper";
 import type { MealEntry, ShoppingItem } from "../lib/types";
+import { getListView } from "../lib/preferences";
 import { ALL_DAYS, currentWeekIso, fmtDay } from "../lib/week";
 
 type View = "aisle" | "recipe";
@@ -25,7 +26,7 @@ export default function ShoppingListPage() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [newItem, setNewItem] = useState("");
-  const [view, setView] = useState<View>("aisle");
+  const [view, setView] = useState<View>(getListView);
   const [hideChecked, setHideChecked] = useState(false);
 
   const generate = useCallback(() => {
