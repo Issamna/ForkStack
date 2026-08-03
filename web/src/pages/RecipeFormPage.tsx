@@ -5,6 +5,7 @@ import { imageForTags } from "../lib/imageHelper";
 import { ACCEPTED_TYPES, uploadRecipePhoto } from "../lib/photoUpload";
 import { getDefaultPublic, getDefaultServings } from "../lib/preferences";
 import { suggestIngredientsForStep } from "../lib/steps";
+import { parseDuration } from "../lib/duration";
 import type { Ingredient, InstructionStep, Tag } from "../lib/types";
 
 const emptyIngredient = (): Ingredient => ({
@@ -159,6 +160,21 @@ export default function RecipeFormPage() {
     return step.ingredients ?? suggestIngredientsForStep(ingredients, step.text);
   }
 
+  /** Timer length for a step: whatever was set, else read from the text. */
+  function stepDuration(step: InstructionStep): number | null {
+    return step.duration_seconds ?? parseDuration(step.text);
+  }
+
+  function setStepDuration(i: number, minutes: number | "") {
+    setInstructions((list) =>
+      list.map((s, idx) =>
+        idx === i
+          ? { ...s, duration_seconds: minutes === "" ? null : Math.round(minutes * 60) }
+          : s,
+      ),
+    );
+  }
+
   /** Editing the chips freezes the suggestion into a real list for that step. */
   function setStepIngredients(i: number, next: number[]) {
     setInstructions((list) =>
@@ -251,6 +267,9 @@ export default function RecipeFormPage() {
       text: s.text.trim(),
       // null stays null, so an uncurated step keeps falling back to matching.
       ingredients: s.ingredients ?? null,
+      // Whatever the box shows is what gets saved, so a duration read out of
+      // the text becomes explicit the first time the recipe is saved.
+      duration_seconds: s.duration_seconds ?? parseDuration(s.text),
     }));
 
     if (!cleanTitle) return setFormError("Please add a recipe title.");
@@ -605,6 +624,30 @@ export default function RecipeFormPage() {
                             )}
                           </select>
                         )}
+
+                        <label className="ml-1 flex items-center gap-1 text-[12px] text-muted">
+                          <span className="eyebrow">Timer</span>
+                          <input
+                            type="number"
+                            min={1}
+                            step={1}
+                            value={
+                              stepDuration(step) != null
+                                ? Math.round((stepDuration(step) as number) / 60) || 1
+                                : ""
+                            }
+                            onChange={(e) =>
+                              setStepDuration(
+                                i,
+                                e.target.value === "" ? "" : Number(e.target.value),
+                              )
+                            }
+                            placeholder="—"
+                            aria-label={`Timer for step ${i + 1}, in minutes`}
+                            className="w-14 rounded border border-field bg-card px-1.5 py-0.5 text-[12px] text-primary focus:outline-none focus:ring-2 focus:ring-accent"
+                          />
+                          min
+                        </label>
 
                         {step.ingredients != null && (
                           <button

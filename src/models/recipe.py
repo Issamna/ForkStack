@@ -1,5 +1,5 @@
 import re
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional
 
 
@@ -16,6 +16,9 @@ class InstructionStep(BaseModel):
     # the cook never curated it, and readers fall back to matching the step text
     # -- an empty list means "deliberately none", which is a different thing.
     ingredients: Optional[List[int]] = None
+    # Timer length in seconds. None means never set, and readers fall back to
+    # reading a duration out of the step text.
+    duration_seconds: Optional[int] = Field(default=None, ge=1, le=24 * 3600)
 
 
 class RecipeIn(BaseModel):

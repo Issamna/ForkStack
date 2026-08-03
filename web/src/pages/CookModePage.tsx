@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../lib/api";
 import { suggestIngredientsForStep } from "../lib/steps";
+import { formatClock, formatDuration, parseDuration } from "../lib/duration";
+import { useTimers } from "../lib/useTimers";
 import type { Recipe } from "../lib/types";
 
 /**
@@ -46,6 +48,13 @@ export default function CookModePage() {
 
   const steps = recipe?.instructions ?? [];
   const current = steps[step];
+  const { timers, start, dismiss, remaining } = useTimers();
+
+  // Whatever the editor stored, else read one out of the step text so recipes
+  // nobody has curated still get a timer where the text says one.
+  const stepSeconds = current
+    ? (current.duration_seconds ?? parseDuration(current.text))
+    : null;
 
   // Prefer what the cook attached to this step in the editor; only guess from
   // the step text for recipes that were never curated.
@@ -117,7 +126,49 @@ export default function CookModePage() {
           </div>
         )}
 
+        {stepSeconds != null && (
+          <button
+            onClick={() => start(`Step ${step + 1}`, stepSeconds)}
+            className="mt-5 inline-flex items-center gap-2 self-start rounded-pill border border-accent/35 bg-paper/[0.08] px-4 py-2.5 text-[14px] font-semibold text-paper transition hover:bg-paper/[0.14]"
+          >
+            <span aria-hidden="true">⏱</span>
+            Start {formatDuration(stepSeconds)} timer
+          </button>
+        )}
+
         <div className="mt-auto pt-8">
+          {timers.length > 0 && (
+            <ul className="mb-4 space-y-2">
+              {timers.map((t) => {
+                const left = remaining(t);
+                return (
+                  <li
+                    key={t.id}
+                    className={`flex items-center gap-3 rounded-card border px-3 py-2 ${
+                      t.done
+                        ? "animate-pulse border-accent bg-accent/25"
+                        : "border-accent/35 bg-paper/[0.08]"
+                    }`}
+                  >
+                    <span className="text-[13px] text-accent">{t.label}</span>
+                    <span className="font-mono text-[18px] font-semibold tabular-nums">
+                      {t.done ? "done" : formatClock(left)}
+                    </span>
+                    <span className="ml-auto">
+                      <button
+                        onClick={() => dismiss(t.id)}
+                        aria-label={`Dismiss ${t.label} timer`}
+                        className="rounded-pill border border-accent/35 px-3 py-1 text-[12px] font-semibold"
+                      >
+                        {t.done ? "Dismiss" : "Cancel"}
+                      </button>
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+
           <div className="flex gap-3">
             <button
               onClick={() => setStep((s) => Math.max(0, s - 1))}
