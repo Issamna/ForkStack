@@ -50,6 +50,15 @@ jobs:
       - name: Install CDK toolchain
         run: pip install -r requirements.txt
 
+      # app.py instantiates FrontendStack as well, and its BucketDeployment
+      # sources web/dist-cloudfront. CDK synthesizes every stack in the app even
+      # when deploying one, so the asset has to exist or synth fails outright.
+      - name: Build the CloudFront bundle (synth asset)
+        working-directory: web
+        run: |
+          npm install
+          npm run build:cloudfront
+
       # No stored credentials: the workflow assumes a role via GitHub's OIDC
       # provider. Set the repo variable AWS_DEPLOY_ROLE_ARN to the role ARN.
       - name: Configure AWS credentials
