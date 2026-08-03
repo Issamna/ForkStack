@@ -3,46 +3,16 @@ import { Link } from "react-router-dom";
 import { api } from "../lib/api";
 import { imageForTags, recipeImage } from "../lib/imageHelper";
 import type { MealEntry, Recipe } from "../lib/types";
+import {
+  ALL_DAYS,
+  MEALS,
+  fmtDay,
+  iso,
+  mealLabel,
+  readWeekStartPref,
+  weekStartOf,
+} from "../lib/week";
 
-interface DayDef {
-  key: string;
-  label: string;
-}
-
-// Indexed by JS Date.getDay() (0 = Sunday .. 6 = Saturday).
-const ALL_DAYS: DayDef[] = [
-  { key: "sun", label: "Sunday" },
-  { key: "mon", label: "Monday" },
-  { key: "tue", label: "Tuesday" },
-  { key: "wed", label: "Wednesday" },
-  { key: "thu", label: "Thursday" },
-  { key: "fri", label: "Friday" },
-  { key: "sat", label: "Saturday" },
-];
-const MEALS = ["breakfast", "lunch", "dinner", "snack"];
-
-function weekStartOf(d: Date, startDow: number): Date {
-  const x = new Date(d);
-  const diff = (x.getDay() - startDow + 7) % 7;
-  x.setDate(x.getDate() - diff);
-  x.setHours(0, 0, 0, 0);
-  return x;
-}
-function iso(d: Date): string {
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${d.getFullYear()}-${m}-${day}`;
-}
-function fmtDay(d: Date): string {
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-}
-function mealLabel(meal?: string | null): string {
-  return meal ? meal.charAt(0).toUpperCase() + meal.slice(1) : "";
-}
-function readWeekStartPref(): number {
-  const v = parseInt(localStorage.getItem("mp_week_start") ?? "", 10);
-  return Number.isInteger(v) && v >= 0 && v <= 6 ? v : 1; // default Monday
-}
 
 export default function MealPlanPage() {
   const [weekStartDow, setWeekStartDow] = useState(readWeekStartPref);
