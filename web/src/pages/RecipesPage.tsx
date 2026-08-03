@@ -129,8 +129,20 @@ export default function RecipesPage() {
     return out;
   }, [visible, plannedDay]);
 
-  /** Flattened row order — what the arrow keys walk. */
-  const ordered = useMemo(() => groups.flatMap((g) => g.rows), [groups]);
+  /**
+   * Flattened row order — what the arrow keys walk.
+   *
+   * Deduplicated: a planned recipe is rendered twice, once under "This week"
+   * and again under its letter. Without this, arrowing down from the letter
+   * copy jumps back to the top group, because the index lookup finds the first
+   * occurrence rather than the one you were on.
+   */
+  const ordered = useMemo(() => {
+    const seen = new Set<string>();
+    return groups
+      .flatMap((g) => g.rows)
+      .filter((r) => !seen.has(r.recipe_id) && seen.add(r.recipe_id));
+  }, [groups]);
 
   const selected = useMemo(
     () => visible.find((r) => r.recipe_id === selectedId) ?? null,
