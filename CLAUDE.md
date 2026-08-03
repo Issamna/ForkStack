@@ -35,6 +35,16 @@ npm run build:cloudfront # base / build -> dist-cloudfront/ (for FrontendStack)
 ```
 `web/.env` (gitignored) holds local dev config; `web/.env.production` (committed — the Clerk publishable key is public) holds the deploy build's Clerk key + API base. Requires a Clerk publishable key (`VITE_CLERK_PUBLISHABLE_KEY`).
 
+### Running the whole app locally
+```bash
+./dev-local.sh                      # DynamoDB Local (docker) + the API on :8000
+./dev-local.sh --seed user_xxx      # ...and reset + seed dummy data for that user
+cd web && npm run dev               # frontend on :5173, already pointed at :8000
+```
+`web/.env` sets `VITE_API_BASE=http://localhost:8000`, so the dev frontend expects a **local** backend. `dev-local.sh` points boto3 at DynamoDB Local via `AWS_ENDPOINT_URL_DYNAMODB` and sets every table env var explicitly — the service defaults disagree (`recipe_service` defaults to `RecipesTable`, the others to singular names), so relying on them half-works. **Running `uvicorn` without those env vars reads and writes the real AWS tables.**
+
+Auth is still real Clerk verification against the dev instance (which permits localhost), so seeded data must be owned by *your* Clerk user id or the app shows an empty cookbook — get it with `window.Clerk.user.id` in the browser console. `src/scripts/seed_local.py` refuses any non-localhost endpoint, so it can't scatter dummy recipes through production. DynamoDB Local runs `-inMemory`: stopping the container wipes everything, which is the point.
+
 ### Infrastructure (run from repo root)
 ```bash
 cdk ls             # AppStack, FrontendStack
