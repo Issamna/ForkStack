@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../lib/api";
-import { imageForTags } from "../lib/imageHelper";
+import { imageForTags, recipeImage } from "../lib/imageHelper";
 import type { MealEntry, Recipe } from "../lib/types";
 
 interface DayDef {
@@ -460,7 +460,7 @@ export default function MealPlanPage() {
                       }`}
                     >
                       <img
-                        src={imageForTags(r.recipe_tags, r.recipe_id)}
+                        src={recipeImage(r)}
                         alt=""
                         className="h-7 w-7 flex-shrink-0 rounded object-cover"
                       />

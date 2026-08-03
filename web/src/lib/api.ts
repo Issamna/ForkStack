@@ -1,5 +1,6 @@
 import type {
   MealEntry,
+  PhotoUpload,
   Recipe,
   ShoppingItem,
   ShoppingList,
@@ -67,6 +68,11 @@ export const api = {
       }),
     pdf: (id: string) =>
       req<{ filename: string; content_base64: string }>(`/recipes/${id}/pdf`),
+    photoUpload: (contentType: string) =>
+      req<PhotoUpload>("/recipes/photo-upload", {
+        method: "POST",
+        body: JSON.stringify({ content_type: contentType }),
+      }),
     tags: () => req<Tag[]>("/tags"),
   },
   mealPlan: {

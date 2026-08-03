@@ -40,3 +40,17 @@ export function imageForTags(
   }
   return `${base}assets/tag_images/generic/${GENERIC[h % GENERIC.length]}`;
 }
+
+/**
+ * The image to show for a recipe: the user's own photo when they uploaded one,
+ * otherwise the deterministic tag placeholder.
+ */
+export function recipeImage(recipe: {
+  image_url?: string | null;
+  recipe_tags?: string[] | null;
+  recipe_id?: string;
+}): string {
+  return (
+    recipe.image_url || imageForTags(recipe.recipe_tags, recipe.recipe_id)
+  );
+}

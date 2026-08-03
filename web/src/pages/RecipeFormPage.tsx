@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api, ApiError } from "../lib/api";
+import { imageForTags } from "../lib/imageHelper";
+import { ACCEPTED_TYPES, uploadRecipePhoto } from "../lib/photoUpload";
 import type { Ingredient, InstructionStep, Tag } from "../lib/types";
 
 const emptyIngredient = (): Ingredient => ({
@@ -35,6 +37,50 @@ export default function RecipeFormPage() {
   const [availableTags, setAvailableTags] = useState<Tag[]>([]);
   const [showTagDropdown, setShowTagDropdown] = useState(false);
   const [tagSearch, setTagSearch] = useState("");
+  const [imageKey, setImageKey] = useState<string | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+
+  // Local previews are object URLs, which leak unless explicitly revoked.
+  const blobUrl = useRef<string | null>(null);
+  function showPreview(url: string | null, isObjectUrl = false) {
+    if (blobUrl.current) URL.revokeObjectURL(blobUrl.current);
+    blobUrl.current = isObjectUrl ? url : null;
+    setImagePreview(url);
+  }
+  useEffect(
+    () => () => {
+      if (blobUrl.current) URL.revokeObjectURL(blobUrl.current);
+    },
+    [],
+  );
+
+  async function onPhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    // Reset so picking the same file twice still fires a change event.
+    e.target.value = "";
+    if (!file) return;
+    setPhotoError(null);
+    setUploading(true);
+    try {
+      const key = await uploadRecipePhoto(file);
+      setImageKey(key);
+      showPreview(URL.createObjectURL(file), true);
+    } catch (err) {
+      setPhotoError(
+        err instanceof Error ? err.message : "Upload failed. Please try again.",
+      );
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function removePhoto() {
+    setImageKey(null);
+    showPreview(null);
+    setPhotoError(null);
+  }
 
   useEffect(() => {
     api.recipes.tags().then(setAvailableTags).catch(() => setAvailableTags([]));
@@ -52,6 +98,8 @@ export default function RecipeFormPage() {
       setServings(r.servings ?? "");
       setRecipeUrl(r.import_source_url ?? "");
       setRecipeTags(r.recipe_tags ?? []);
+      setImageKey(r.image_key ?? null);
+      setImagePreview(r.image_url ?? null);
     });
   }, [editing, id]);
 
@@ -128,6 +176,7 @@ export default function RecipeFormPage() {
       is_shareable: isShareable,
       servings: servings === "" ? null : Number(servings),
       recipe_tags: recipeTags,
+      image_key: imageKey,
       ...(recipeUrl.trim() ? { import_source_url: recipeUrl.trim() } : {}),
     };
 
@@ -209,6 +258,55 @@ export default function RecipeFormPage() {
         <span className="text-xs text-gray-400">
           people (used to scale shopping lists)
         </span>
+      </div>
+
+      {/* Photo -- optional; falls back to the tag-based illustration. */}
+      <div className="mt-4">
+        <span className="text-sm font-medium text-textgray">Photo</span>
+        <div className="mt-2 flex items-center gap-4">
+          <img
+            src={imagePreview || imageForTags(recipeTags, id)}
+            alt=""
+            className={`h-24 w-24 flex-shrink-0 rounded-lg border border-gray-200 bg-gray-100 object-cover ${
+              uploading ? "opacity-50" : ""
+            }`}
+          />
+          <div className="flex min-w-0 flex-col items-start gap-1.5">
+            <label
+              className={`button-primary cursor-pointer ${
+                uploading ? "pointer-events-none opacity-60" : ""
+              }`}
+            >
+              {uploading
+                ? "Uploading…"
+                : imageKey
+                  ? "Replace photo"
+                  : "Upload photo"}
+              <input
+                type="file"
+                accept={ACCEPTED_TYPES.join(",")}
+                onChange={onPhotoChange}
+                disabled={uploading}
+                className="hidden"
+              />
+            </label>
+            {imageKey && !uploading && (
+              <button
+                type="button"
+                onClick={removePhoto}
+                className="text-xs text-gray-400 underline hover:text-red-500"
+              >
+                Remove photo
+              </button>
+            )}
+            <p className="text-xs text-gray-400">
+              Optional — we’ll pick an illustration if you skip it.
+            </p>
+          </div>
+        </div>
+        {photoError && (
+          <p className="mt-1 text-xs text-red-500">{photoError}</p>
+        )}
       </div>
 
       {/* Tags */}

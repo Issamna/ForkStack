@@ -19,6 +19,16 @@ export interface Recipe {
   import_source_url?: string;
   recipe_tags?: string[];
   servings?: number | null;
+  /** S3 object key of an uploaded photo; null means use a placeholder. */
+  image_key?: string | null;
+  /** Short-lived presigned URL, minted per response. Never send this back. */
+  image_url?: string | null;
+}
+
+export interface PhotoUpload {
+  image_key: string;
+  url: string;
+  fields: Record<string, string>;
 }
 
 export interface MealEntry {

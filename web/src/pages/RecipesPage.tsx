@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@clerk/clerk-react";
 import { api } from "../lib/api";
-import { imageForTags } from "../lib/imageHelper";
+import { recipeImage } from "../lib/imageHelper";
 import type { Recipe } from "../lib/types";
 
 type Tab = "mine" | "discover";
@@ -139,7 +139,7 @@ export default function RecipesPage() {
               className="flex aspect-square cursor-pointer flex-col overflow-hidden rounded-lg bg-white shadow hover:shadow-md"
             >
               <img
-                src={imageForTags(recipe.recipe_tags, recipe.recipe_id)}
+                src={recipeImage(recipe)}
                 alt="Recipe"
                 className="h-3/5 w-full object-cover"
               />

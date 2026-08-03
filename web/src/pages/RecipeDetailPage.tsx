@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@clerk/clerk-react";
 import { api } from "../lib/api";
-import { imageForTags } from "../lib/imageHelper";
+import { recipeImage } from "../lib/imageHelper";
 import type { Recipe } from "../lib/types";
 
 const base = import.meta.env.BASE_URL;
@@ -30,7 +30,7 @@ export default function RecipeDetailPage() {
   }
 
   const isOwner = recipe.owner_id === userId;
-  const img = imageForTags(recipe.recipe_tags, recipe.recipe_id);
+  const img = recipeImage(recipe);
 
   function downloadPdf() {
     if (!recipe || downloadingPdf) return;
