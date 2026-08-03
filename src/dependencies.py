@@ -21,18 +21,31 @@ _AUTHORIZED_PARTIES = [
 _bearer = HTTPBearer(auto_error=False)
 
 _JWKS_TTL = 3600
+# Floor between forced refreshes; see _jwks().
+_JWKS_REFRESH_FLOOR = 60
 _jwks_cache = {"keys": None, "at": 0.0}
 _jwks_lock = threading.Lock()
 
 
-def _jwks():
-    """Clerk's public signing keys, cached per-process (rotated hourly)."""
-    if _jwks_cache["keys"] is None or time.time() - _jwks_cache["at"] > _JWKS_TTL:
+def _jwks(force: bool = False):
+    """Clerk's public signing keys, cached per-process.
+
+    `force` re-fetches when a token names a key we don't know about, so a
+    Clerk key rotation doesn't reject every request until the TTL lapses. The
+    refresh is rate-limited: an unknown `kid` is attacker-controlled, and
+    without the floor anyone could make us hammer Clerk's JWKS endpoint.
+    """
+    stale = _jwks_cache["keys"] is None or (
+        time.time() - _jwks_cache["at"] > _JWKS_TTL
+    )
+    forced = force and time.time() - _jwks_cache["at"] > _JWKS_REFRESH_FLOOR
+    if stale or forced:
         with _jwks_lock:
-            if (
-                _jwks_cache["keys"] is None
-                or time.time() - _jwks_cache["at"] > _JWKS_TTL
-            ):
+            stale = _jwks_cache["keys"] is None or (
+                time.time() - _jwks_cache["at"] > _JWKS_TTL
+            )
+            forced = force and time.time() - _jwks_cache["at"] > _JWKS_REFRESH_FLOOR
+            if stale or forced:
                 url = f"{CLERK_ISSUER}/.well-known/jwks.json"
                 with urllib.request.urlopen(url, timeout=5) as resp:
                     _jwks_cache["keys"] = json.loads(resp.read())["keys"]
@@ -56,6 +69,9 @@ def get_current_user(
         kid = jwt.get_unverified_header(token).get("kid")
         key = next((k for k in _jwks() if k.get("kid") == kid), None)
         if key is None:
+            # Unknown key id: Clerk may have rotated. Re-fetch once, then fail.
+            key = next((k for k in _jwks(force=True) if k.get("kid") == kid), None)
+        if key is None:
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid token")
         claims = jwt.decode(
             token,
@@ -67,8 +83,11 @@ def get_current_user(
     except JWTError:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid token")
 
-    azp = claims.get("azp")
-    if _AUTHORIZED_PARTIES and azp and azp not in _AUTHORIZED_PARTIES:
+    # `azp` binds the token to the origin it was issued for. Fail closed when
+    # authorized parties are configured: the previous `and azp and ...` skipped
+    # the check entirely for a token that simply omitted the claim, so anything
+    # this Clerk instance signed was accepted regardless of origin.
+    if _AUTHORIZED_PARTIES and claims.get("azp") not in _AUTHORIZED_PARTIES:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid token")
 
     sub = claims.get("sub")
