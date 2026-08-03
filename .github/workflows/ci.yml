@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, "release/**"]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements-dev.txt
+          pip install -r src/requirements.txt
+
+      # Unit tests patch the table handles; integration tests run the real app
+      # against moto. Both, always -- the integration ones are what catch
+      # storage-shape regressions.
+      - name: Run tests
+        working-directory: src
+        run: python -m pytest -q
+
+  frontend:
+    name: Frontend typecheck and build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # No committed lockfile (the repo ignores them), so use install.
+      - run: npm install
+      - run: npm run typecheck
+
+      # Build with the production base path, matching what deploys.
+      - run: npm run build
+
+  e2e:
+    name: End-to-end
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install backend dependencies
+        run: |
+          pip install -r requirements-dev.txt
+          pip install -r src/requirements.txt
+
+      - name: Install frontend dependencies
+        working-directory: web
+        run: npm install
+
+      - name: Install Playwright browsers
+        working-directory: web
+        run: npx playwright install --with-deps chromium
+
+      # playwright.config.ts starts both servers itself: dev-local.sh (moto +
+      # the API with mock auth, seeded) and Vite in mock-auth mode. No AWS
+      # credentials and no Clerk instance are involved.
+      - name: Run end-to-end tests
+        working-directory: web
+        run: npm run test:e2e
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: web/playwright-report/
+          retention-days: 7

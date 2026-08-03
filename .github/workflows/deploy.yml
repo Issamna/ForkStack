@@ -1,0 +1,97 @@
+name: Deploy
+
+# Backend and frontend ship together, from the same commit, backend first.
+# Deploying them separately is what broke production: the React + Clerk
+# frontend went live against a backend that still expected the old JWTs.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: write # gh-pages publish
+  id-token: write # OIDC federation to AWS
+
+jobs:
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: |
+          pip install -r requirements-dev.txt
+          pip install -r src/requirements.txt
+      - name: Run tests
+        working-directory: src
+        run: python -m pytest -q
+
+  backend:
+    name: Deploy backend (AppStack)
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install CDK toolchain
+        run: pip install -r requirements.txt
+
+      # No stored credentials: the workflow assumes a role via GitHub's OIDC
+      # provider. Set the repo variable AWS_DEPLOY_ROLE_ARN to the role ARN.
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-1
+
+      # PythonFunction bundles the Lambda in Docker, which the runner provides.
+      - name: Deploy
+        run: npx cdk deploy AppStack --require-approval never
+
+  frontend:
+    name: Deploy frontend (GitHub Pages)
+    needs: backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      # Vite base '/ForkStack/' comes from production mode in vite.config.ts;
+      # build-time env (Clerk key, API base) from web/.env.production.
+      # VITE_AUTH_MODE is deliberately unset here: mock auth must never build.
+      - name: Build
+        run: npm run build
+
+      # GitHub Pages serves 404.html for unknown paths; make it the SPA shell so
+      # deep links like /ForkStack/recipes survive a refresh.
+      - name: Add SPA 404 fallback
+        run: cp dist/index.html dist/404.html
+
+      - name: Publish to gh-pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./web/dist
+          publish_branch: gh-pages
