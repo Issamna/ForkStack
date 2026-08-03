@@ -4,6 +4,7 @@ import { api, ApiError } from "../lib/api";
 import { imageForTags } from "../lib/imageHelper";
 import { ACCEPTED_TYPES, uploadRecipePhoto } from "../lib/photoUpload";
 import { getDefaultPublic, getDefaultServings } from "../lib/preferences";
+import { suggestIngredientsForStep } from "../lib/steps";
 import type { Ingredient, InstructionStep, Tag } from "../lib/types";
 
 const emptyIngredient = (): Ingredient => ({
@@ -153,6 +154,37 @@ export default function RecipeFormPage() {
       list.map((ing, idx) => (idx === i ? { ...ing, ...patch } : ing)),
     );
   }
+  /** Ingredients shown for a step: the curated list, or a live suggestion. */
+  function stepIngredients(step: InstructionStep): number[] {
+    return step.ingredients ?? suggestIngredientsForStep(ingredients, step.text);
+  }
+
+  /** Editing the chips freezes the suggestion into a real list for that step. */
+  function setStepIngredients(i: number, next: number[]) {
+    setInstructions((list) =>
+      list.map((s, idx) =>
+        idx === i ? { ...s, ingredients: [...next].sort((a, b) => a - b) } : s,
+      ),
+    );
+  }
+
+  /** Drop an ingredient and re-point every curated index that sat after it. */
+  function removeIngredient(index: number) {
+    setIngredients((list) => list.filter((_, idx) => idx !== index));
+    setInstructions((list) =>
+      list.map((s) =>
+        s.ingredients
+          ? {
+              ...s,
+              ingredients: s.ingredients
+                .filter((n) => n !== index)
+                .map((n) => (n > index ? n - 1 : n)),
+            }
+          : s,
+      ),
+    );
+  }
+
   function updateStep(i: number, text: string) {
     setInstructions((list) =>
       list.map((s, idx) => (idx === i ? { ...s, text } : s)),
@@ -217,6 +249,8 @@ export default function RecipeFormPage() {
     const cleanInstructions = filledSteps.map((s, idx) => ({
       step_number: idx + 1,
       text: s.text.trim(),
+      // null stays null, so an uncurated step keeps falling back to matching.
+      ingredients: s.ingredients ?? null,
     }));
 
     if (!cleanTitle) return setFormError("Please add a recipe title.");
@@ -479,9 +513,7 @@ export default function RecipeFormPage() {
                     />
                     <button
                       type="button"
-                      onClick={() =>
-                        setIngredients((l) => l.filter((_, idx) => idx !== i))
-                      }
+                      onClick={() => removeIngredient(i)}
                       aria-label={`Remove ingredient ${i + 1}`}
                       className="w-[22px] flex-shrink-0 text-muted-2 transition hover:text-danger"
                     >
@@ -518,6 +550,80 @@ export default function RecipeFormPage() {
                         onChange={(v) => updateStep(i, v)}
                         placeholder="What happens in this step?"
                       />
+
+                      {/* Which ingredients this step uses. Suggested from the
+                          text until touched, then it's the cook's list. This is
+                          what cook mode shows. */}
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1">
+                        <span className="eyebrow mr-0.5">Uses</span>
+                        {stepIngredients(step).map((n) =>
+                          ingredients[n]?.name.trim() ? (
+                            <span key={n} className="chip-tag gap-1 py-0.5">
+                              {ingredients[n].name}
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setStepIngredients(
+                                    i,
+                                    stepIngredients(step).filter((x) => x !== n),
+                                  )
+                                }
+                                aria-label={`Remove ${ingredients[n].name} from step ${i + 1}`}
+                                className="leading-none text-muted transition hover:text-danger"
+                              >
+                                ×
+                              </button>
+                            </span>
+                          ) : null,
+                        )}
+
+                        {/* Only offers what isn't already on the step. */}
+                        {ingredients.some(
+                          (ing, n) =>
+                            ing.name.trim() && !stepIngredients(step).includes(n),
+                        ) && (
+                          <select
+                            value=""
+                            onChange={(e) => {
+                              if (!e.target.value) return;
+                              setStepIngredients(i, [
+                                ...stepIngredients(step),
+                                Number(e.target.value),
+                              ]);
+                            }}
+                            aria-label={`Add an ingredient to step ${i + 1}`}
+                            className="rounded-pill border border-dashed border-terracotta-line bg-transparent px-2 py-0.5 text-[12px] font-semibold text-terracotta"
+                          >
+                            <option value="">+ ingredient</option>
+                            {ingredients.map((ing, n) =>
+                              ing.name.trim() &&
+                              !stepIngredients(step).includes(n) ? (
+                                <option key={n} value={n}>
+                                  {ing.name}
+                                </option>
+                              ) : null,
+                            )}
+                          </select>
+                        )}
+
+                        {step.ingredients != null && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setInstructions((l) =>
+                                l.map((s, idx) =>
+                                  idx === i ? { ...s, ingredients: null } : s,
+                                ),
+                              )
+                            }
+                            aria-label={`Reset step ${i + 1} to suggested ingredients`}
+                            title="Go back to matching the step text"
+                            className="text-[11px] text-muted-2 underline hover:text-terracotta"
+                          >
+                            reset
+                          </button>
+                        )}
+                      </div>
                     </div>
                     <button
                       type="button"
