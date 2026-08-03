@@ -47,7 +47,7 @@ export default function LandingPage() {
   if (isLoaded && isSignedIn) return <Navigate to="/recipes" replace />;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-paper">
       <header className="mx-auto flex max-w-5xl items-center justify-between px-5 py-4">
         <div className="flex items-center gap-2">
           <img
