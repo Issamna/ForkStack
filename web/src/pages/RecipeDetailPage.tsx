@@ -1,16 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { useAuth } from "@clerk/clerk-react";
+import { useAuth } from "../lib/auth";
 import { api } from "../lib/api";
 import { recipeImage } from "../lib/imageHelper";
-import type { Recipe } from "../lib/types";
-
-const base = import.meta.env.BASE_URL;
+import { normalizeName, scaleQuantity } from "../lib/quantity";
+import type { MealEntry, Recipe, ShoppingItem } from "../lib/types";
+import { currentWeekIso, dayChip } from "../lib/week";
 
 export default function RecipeDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { userId } = useAuth();
+  const weekIso = useMemo(currentWeekIso, []);
 
   const [recipe, setRecipe] = useState<Recipe>();
   const [showConfirm, setShowConfirm] = useState(false);
@@ -19,18 +20,76 @@ export default function RecipeDetailPage() {
   const [pdfMessage, setPdfMessage] = useState("");
   const [pdfError, setPdfError] = useState(false);
 
+  const [servings, setServings] = useState<number | null>(null);
+  const [ticked, setTicked] = useState<Set<number>>(new Set());
+  const [planEntries, setPlanEntries] = useState<MealEntry[]>([]);
+  const [listItems, setListItems] = useState<ShoppingItem[]>([]);
+  const [addingRest, setAddingRest] = useState(false);
+
   useEffect(() => {
     if (!id) return;
     setRecipe(undefined);
-    api.recipes.get(id).then(setRecipe).catch(() => setRecipe(undefined));
+    api.recipes
+      .get(id)
+      .then((r) => {
+        setRecipe(r);
+        setServings(r.servings ?? null);
+      })
+      .catch(() => setRecipe(undefined));
   }, [id]);
 
+  useEffect(() => {
+    api.mealPlan
+      .get(weekIso)
+      .then((r) => setPlanEntries(r.entries || []))
+      .catch(() => setPlanEntries([]));
+    api.shoppingList
+      .get(weekIso)
+      .then((r) => setListItems(r.items || []))
+      .catch(() => setListItems([]));
+  }, [weekIso]);
+
+  // Quantities are scaled by however far the stepper is from the recipe's own
+  // serving count; without a base there is nothing to scale against.
+  const factor =
+    recipe?.servings && servings ? servings / recipe.servings : 1;
+
+  const onList = useMemo(
+    () =>
+      new Set(
+        listItems.filter((i) => !i.removed).map((i) => normalizeName(i.name)),
+      ),
+    [listItems],
+  );
+  const missing = useMemo(
+    () =>
+      recipe
+        ? recipe.ingredients.filter((i) => !onList.has(normalizeName(i.name)))
+        : [],
+    [recipe, onList],
+  );
+
   if (!recipe) {
-    return <div className="py-12 text-center text-gray-400">Loading recipe…</div>;
+    return (
+      <div className="mx-auto max-w-6xl px-4 py-8">
+        <div className="card-surface p-10 text-center">
+          <p className="meta">Loading recipe…</p>
+        </div>
+      </div>
+    );
   }
 
   const isOwner = recipe.owner_id === userId;
-  const img = recipeImage(recipe);
+  const plannedEntry = planEntries.find((e) => e.recipe_id === recipe.recipe_id);
+  const meta = [
+    recipe.total_time ? `${recipe.total_time} min` : null,
+    `${recipe.ingredients.length} ingredients`,
+    recipe.import_source_url
+      ? `imported from ${new URL(recipe.import_source_url).hostname}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   function downloadPdf() {
     if (!recipe || downloadingPdf) return;
@@ -70,166 +129,252 @@ export default function RecipeDetailPage() {
   function addToCookbook() {
     if (!recipe || adding) return;
     setAdding(true);
-    const { recipe_id: _r, owner_id: _o, ...rest } = recipe;
+    const {
+      recipe_id: _r,
+      owner_id: _o,
+      image_url: _u,
+      image_key: _k,
+      ...rest
+    } = recipe;
     api.recipes
       .create({ ...rest, is_shareable: false })
       .then((created) => navigate(`/recipes/${created.recipe_id}`))
       .catch(() => setAdding(false));
   }
 
+  /** Append the ingredients this recipe needs that aren't on the list yet. */
+  function addTheRest() {
+    if (!recipe || addingRest || !missing.length) return;
+    setAddingRest(true);
+    const additions: ShoppingItem[] = missing.map((i) => ({
+      name: i.name,
+      unit: i.measurement_type || "",
+      quantity: scaleQuantity(i.quantity, factor),
+      sources: [recipe.title],
+      checked: false,
+      custom: true,
+      removed: false,
+    }));
+    api.shoppingList
+      .save(weekIso, [...listItems, ...additions])
+      .then((res) => setListItems(res.items || []))
+      .finally(() => setAddingRest(false));
+  }
+
+  function toggle(i: number) {
+    setTicked((prev) => {
+      const next = new Set(prev);
+      if (next.has(i)) next.delete(i);
+      else next.add(i);
+      return next;
+    });
+  }
+
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8 text-textgray">
-      <Link
-        to="/recipes"
-        className="mb-4 inline-flex items-center gap-1 text-sm text-gray-500 hover:text-accent"
-      >
+    <div className="mx-auto max-w-6xl px-4 py-5 sm:px-[22px]">
+      <Link to="/recipes" className="meta hover:text-terracotta">
         ‹ Back to recipes
       </Link>
 
-      <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-3">
-          <h1 className="break-words text-3xl font-bold sm:text-4xl">
+      {/* Hero */}
+      <section className="card-surface mt-3 flex flex-col gap-5 p-4 sm:flex-row sm:p-5">
+        <img
+          src={recipeImage(recipe)}
+          alt=""
+          className="h-[230px] w-full flex-shrink-0 rounded-card bg-cardalt object-cover sm:w-[230px]"
+        />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <h1 className="break-words font-serif text-[32px] font-semibold leading-[1.1] text-primary sm:text-[40px]">
             {recipe.title}
           </h1>
-          <div className="mb-1 flex items-center gap-2">
+          <p className="meta mt-2">{meta}</p>
+
+          <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+            {plannedEntry && (
+              <span className="rounded-pill border border-plan-line bg-plan-bg px-2.5 py-1 text-[12px] font-semibold text-sage">
+                Planned {dayChip(plannedEntry.day) ?? "this week"}
+              </span>
+            )}
+            {recipe.recipe_tags?.map((t) => (
+              <span key={t} className="chip-tag">
+                {t}
+              </span>
+            ))}
+          </div>
+
+          <div className="mt-5 flex flex-wrap items-center gap-2 sm:mt-auto sm:pt-5">
+            <Link to="/meal-plan" className="pill-primary">
+              Add to plan
+            </Link>
+            <Link
+              to={`/recipes/${recipe.recipe_id}/cook`}
+              className="pill-outline"
+            >
+              Cook mode
+            </Link>
+            {isOwner && (
+              <Link
+                to={`/recipes/${recipe.recipe_id}/edit`}
+                className="pill-outline"
+              >
+                Edit
+              </Link>
+            )}
             <button
               onClick={downloadPdf}
               disabled={downloadingPdf}
-              title="Download PDF"
-              aria-label="Download PDF"
-              className="h-6 w-6 text-textgray transition hover:text-accent disabled:opacity-50"
+              className="pill-outline"
             >
-              <svg
-                className="h-6 w-6"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                viewBox="0 0 24 24"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
+              {downloadingPdf ? "Preparing…" : "Download PDF"}
             </button>
             {recipe.import_source_url && (
               <a
                 href={recipe.import_source_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                title="View original recipe"
-                className="block h-6 w-6"
+                className="pill-outline"
               >
-                <img
-                  src={`${base}assets/link.svg`}
-                  alt="View original"
-                  className="h-6 w-6"
-                />
+                Original ↗
               </a>
             )}
+            {!isOwner && (
+              <button
+                onClick={addToCookbook}
+                disabled={adding}
+                className="pill-accent"
+              >
+                {adding ? "Adding…" : "+ Add to my cookbook"}
+              </button>
+            )}
             {isOwner && (
-              <>
-                <Link
-                  to={`/recipes/${recipe.recipe_id}/edit`}
-                  title="Edit"
-                  className="block h-6 w-6"
-                >
-                  <img
-                    src={`${base}assets/edit.svg`}
-                    alt="Edit"
-                    className="h-6 w-6"
-                  />
-                </Link>
-                <button
-                  onClick={() => setShowConfirm(true)}
-                  title="Delete"
-                  className="block h-6 w-6"
-                >
-                  <img
-                    src={`${base}assets/delete.svg`}
-                    alt="Delete"
-                    className="h-6 w-6"
-                  />
-                </button>
-              </>
+              <button
+                onClick={() => setShowConfirm(true)}
+                className="pill-outline !text-muted-2"
+              >
+                Delete
+              </button>
             )}
           </div>
+          {pdfMessage && (
+            <p
+              className={`mt-2 text-[12px] ${
+                pdfError ? "text-danger" : "text-sage"
+              }`}
+            >
+              {pdfMessage}
+            </p>
+          )}
         </div>
+      </section>
 
-        {!isOwner && (
-          <button
-            onClick={addToCookbook}
-            disabled={adding}
-            className="rounded bg-accent px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-primary disabled:opacity-60"
-          >
-            {adding ? "Adding…" : "+ Add to my cookbook"}
-          </button>
-        )}
-      </div>
+      <div className="mt-4 grid gap-4 lg:grid-cols-[360px_1fr]">
+        {/* Ingredients */}
+        <section className="card-surface flex flex-col p-4 sm:p-[18px]">
+          <div className="flex items-center justify-between">
+            <h2 className="font-serif text-[20px] font-semibold text-primary">
+              Ingredients
+            </h2>
+            {recipe.servings && servings != null && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setServings(Math.max(1, servings - 1))}
+                  aria-label="Fewer servings"
+                  className="icon-pill h-8 w-8"
+                >
+                  −
+                </button>
+                <span className="min-w-4 text-center text-[14px] font-semibold text-primary">
+                  {servings}
+                </span>
+                <button
+                  onClick={() => setServings(servings + 1)}
+                  aria-label="More servings"
+                  className="icon-pill h-8 w-8"
+                >
+                  +
+                </button>
+              </div>
+            )}
+          </div>
 
-      {pdfMessage && (
-        <p className={`mb-2 text-sm ${pdfError ? "text-red-600" : "text-sage"}`}>
-          {pdfMessage}
-        </p>
-      )}
-      {recipe.servings ? (
-        <p className="mb-2 text-sm text-gray-500">Serves {recipe.servings}</p>
-      ) : null}
-      {recipe.recipe_tags?.length ? (
-        <div className="mb-4 flex flex-wrap gap-2">
-          {recipe.recipe_tags.map((tag) => (
-            <span key={tag} className="rounded border px-2 py-1 text-sm">
-              {tag}
-            </span>
-          ))}
-        </div>
-      ) : null}
-
-      <div className="mx-auto mb-6 w-full max-w-xs sm:hidden">
-        <div className="aspect-square overflow-hidden rounded shadow">
-          <img src={img} alt="Recipe" className="h-full w-full object-cover" />
-        </div>
-      </div>
-
-      <div className="mb-8 grid gap-6 sm:grid-cols-3">
-        <div className="sm:col-span-2">
-          <h2 className="mb-2 text-xl font-semibold">Ingredients</h2>
-          <ul className="list-disc space-y-1 pl-5">
+          <ul className="mt-3 space-y-0.5">
             {recipe.ingredients.map((ing, i) => (
               <li key={i}>
-                {ing.quantity} {ing.measurement_type} {ing.name}
+                <label className="flex min-h-[44px] cursor-pointer items-start gap-3 rounded-tile px-1 py-2 transition hover:bg-paper sm:min-h-0">
+                  <input
+                    type="checkbox"
+                    checked={ticked.has(i)}
+                    onChange={() => toggle(i)}
+                    className="mt-0.5 h-[17px] w-[17px] flex-shrink-0 cursor-pointer accent-accent"
+                  />
+                  <span
+                    className={`text-[14px] ${
+                      ticked.has(i)
+                        ? "text-muted-2 line-through"
+                        : "text-textgray"
+                    }`}
+                  >
+                    <span className="font-semibold text-primary">
+                      {scaleQuantity(ing.quantity, factor)}{" "}
+                      {ing.measurement_type}
+                    </span>{" "}
+                    {ing.name}
+                  </span>
+                </label>
               </li>
             ))}
           </ul>
-        </div>
-        <div className="hidden aspect-square w-full max-w-xs overflow-hidden rounded shadow sm:block">
-          <img src={img} alt="Recipe" className="h-full w-full object-cover" />
-        </div>
-      </div>
 
-      <div>
-        <h2 className="mb-2 text-xl font-semibold">Instructions</h2>
-        <ol className="list-decimal space-y-2 pl-5">
-          {recipe.instructions.map((step) => (
-            <li key={step.step_number}>{step.text}</li>
-          ))}
-        </ol>
+          {onList.size > 0 && (
+            <div className="note-plan mt-auto flex flex-wrap items-center justify-between gap-2 pt-3">
+              <span>
+                {recipe.ingredients.length - missing.length} of{" "}
+                {recipe.ingredients.length} already on this week’s list
+              </span>
+              {missing.length > 0 && (
+                <button
+                  onClick={addTheRest}
+                  disabled={addingRest}
+                  className="pill-accent px-3 py-1.5 text-[12px]"
+                >
+                  {addingRest ? "Adding…" : "Add the rest"}
+                </button>
+              )}
+            </div>
+          )}
+        </section>
+
+        {/* Method */}
+        <section className="card-surface p-4 sm:p-[18px]">
+          <h2 className="font-serif text-[20px] font-semibold text-primary">
+            Method
+          </h2>
+          <ol className="mt-3 space-y-3.5">
+            {recipe.instructions.map((step) => (
+              <li key={step.step_number} className="flex gap-3.5">
+                <span className="step-bubble h-[26px] w-[26px] text-[13px]">
+                  {step.step_number}
+                </span>
+                <span className="text-[15px] leading-[1.65] text-textgray">
+                  {step.text}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </section>
       </div>
 
       {showConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="w-80 max-w-full rounded-lg bg-white p-6 text-center shadow-lg">
-            <h2 className="mb-4 text-xl font-semibold text-textgray">
-              Delete Recipe?
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-primary/30 p-4">
+          <div className="card-surface w-full max-w-sm border-danger-line bg-danger-bg p-6 text-center">
+            <h2 className="font-serif text-[20px] font-semibold text-danger">
+              Delete this recipe?
             </h2>
-            <p className="mb-6 text-sm text-gray-600">
-              This action cannot be undone.
-            </p>
-            <div className="flex justify-center gap-4">
+            <p className="meta mt-2">This action cannot be undone.</p>
+            <div className="mt-5 flex justify-center gap-2">
               <button
                 onClick={() => setShowConfirm(false)}
-                className="rounded bg-gray-200 px-4 py-2 text-gray-700 hover:bg-gray-300"
+                className="pill-outline"
               >
                 Cancel
               </button>
@@ -238,7 +383,7 @@ export default function RecipeDetailPage() {
                   confirmDelete();
                   setShowConfirm(false);
                 }}
-                className="rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700"
+                className="rounded-pill border border-danger px-4 py-2 text-[13px] font-semibold text-danger transition hover:bg-danger hover:text-white"
               >
                 Delete
               </button>

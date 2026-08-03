@@ -1,6 +1,7 @@
 import { createBrowserRouter } from "react-router-dom";
 import Layout from "./App";
 import RequireAuth from "./components/RequireAuth";
+import CookModePage from "./pages/CookModePage";
 import LandingPage from "./pages/LandingPage";
 import SignInPage from "./pages/SignInPage";
 import SignUpPage from "./pages/SignUpPage";
@@ -21,6 +22,16 @@ export const router = createBrowserRouter(
     { path: "/", element: <LandingPage /> },
     { path: "/sign-in/*", element: <SignInPage /> },
     { path: "/sign-up/*", element: <SignUpPage /> },
+    // Cook mode is deliberately outside the shell: full-bleed dark panel with
+    // its own back link, no app header competing for the screen.
+    {
+      path: "/recipes/:id/cook",
+      element: (
+        <RequireAuth>
+          <CookModePage />
+        </RequireAuth>
+      ),
+    },
     {
       element: (
         <RequireAuth>

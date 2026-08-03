@@ -1,81 +1,98 @@
-import { Link, Outlet } from "react-router-dom";
-import { UserButton } from "@clerk/clerk-react";
+import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
+import { UserButton } from "./lib/auth";
 
 const base = import.meta.env.BASE_URL;
 
-/** App shell: navbar + routed content. */
+const NAV = [
+  { to: "/recipes", label: "Recipes" },
+  { to: "/meal-plan", label: "Meal plan" },
+  { to: "/shopping-list", label: "Shopping list" },
+];
+
+/** App shell: warm-index header + routed content. */
 export default function Layout() {
+  const { pathname } = useLocation();
+  // Right-hand actions are per-screen. Only the recipes actions have a route
+  // to point at today; meal plan and shopping list keep their in-page controls
+  // until those screens are redesigned.
+  const onRecipes = pathname.startsWith("/recipes");
+  const onMealPlan = pathname.startsWith("/meal-plan");
+
   return (
-    <>
-      <nav className="navbar">
-        <Link to="/recipes" className="logo-wrapper">
+    <div className="min-h-screen bg-paper">
+      <header className="app-header">
+        <Link to="/recipes" className="flex flex-shrink-0 items-center gap-2.5">
           <img
             src={`${base}assets/logo.png`}
-            alt="Forkstack"
-            className="logo-image"
+            alt=""
+            className="h-7 w-7 rounded-[7px]"
           />
-          <span className="logo-text">fork-stack</span>
+          <span className="wordmark hidden sm:inline">fork-stack</span>
         </Link>
 
-        <div className="nav-actions">
-          <Link
-            to="/recipes/new"
-            className="nav-button text-3xl font-semibold leading-none"
-            aria-label="Add recipe"
-            title="Add recipe"
-          >
-            +
-          </Link>
-          <Link
-            to="/meal-plan"
-            className="nav-button"
-            aria-label="Meal plan"
-            title="Meal plan"
-          >
-            <svg
-              className="h-6 w-6"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              viewBox="0 0 24 24"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+        <nav className="flex min-w-0 items-center gap-4 overflow-x-auto sm:gap-5">
+          {NAV.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              className={({ isActive }) =>
+                `nav-link whitespace-nowrap ${isActive ? "nav-link-active" : ""}`
+              }
             >
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-              <line x1="16" y1="2" x2="16" y2="6" />
-              <line x1="8" y1="2" x2="8" y2="6" />
-              <line x1="3" y1="10" x2="21" y2="10" />
-            </svg>
-          </Link>
-          <Link
-            to="/shopping-list"
-            className="nav-button"
-            aria-label="Shopping list"
-            title="Shopping list"
-          >
-            <svg
-              className="h-6 w-6"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              viewBox="0 0 24 24"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <circle cx="9" cy="21" r="1" />
-              <circle cx="20" cy="21" r="1" />
-              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
-            </svg>
-          </Link>
-          {/* Sized to match the icon buttons so the row stays on one baseline. */}
-          <div className="ml-1 flex h-11 w-11 items-center justify-center">
-            <UserButton />
-          </div>
+              {item.label}
+            </NavLink>
+          ))}
+        </nav>
+
+        <div className="ml-auto flex flex-shrink-0 items-center gap-2">
+          {onRecipes && (
+            <>
+              <Link
+                to="/recipes/new?import=1"
+                className="pill-outline hidden md:inline-flex"
+              >
+                Import from URL
+              </Link>
+              {/* Full label on desktop, 44px icon target on a phone. */}
+              <Link to="/recipes/new" className="pill-primary hidden sm:inline-flex">
+                + Add recipe
+              </Link>
+              <Link
+                to="/recipes/new"
+                aria-label="Add recipe"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-terracotta text-2xl font-semibold leading-none text-white sm:hidden"
+              >
+                +
+              </Link>
+            </>
+          )}
+          {onMealPlan && (
+            /* ?add=1 opens the plan's own dialog, which owns the entry state. */
+            <>
+              <Link
+                to="/meal-plan?add=1"
+                className="pill-primary hidden sm:inline-flex"
+              >
+                + Add to plan
+              </Link>
+              <Link
+                to="/meal-plan?add=1"
+                aria-label="Add to plan"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-terracotta text-2xl font-semibold leading-none text-white sm:hidden"
+              >
+                +
+              </Link>
+            </>
+          )}
+          <UserButton
+            appearance={{ elements: { avatarBox: { width: 30, height: 30 } } }}
+          />
         </div>
-      </nav>
-      <main className="p-4">
+      </header>
+
+      <main>
         <Outlet />
       </main>
-    </>
+    </div>
   );
 }

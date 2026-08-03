@@ -52,6 +52,7 @@ def create(recipe: RecipeIn, current_user_id: str = Depends(get_current_user)):
         "import_source_url": recipe.import_source_url,
         "recipe_tags": recipe.recipe_tags,
         "servings": recipe.servings,
+        "total_time": recipe.total_time,
         "image_key": _accepted_key(recipe, current_user_id),
     }
     table.put_item(Item=item)
@@ -143,6 +144,7 @@ def update(
         "import_source_url": recipe.import_source_url,
         "recipe_tags": recipe.recipe_tags,
         "servings": recipe.servings,
+        "total_time": recipe.total_time,
         "image_key": new_key,
     }
     table.put_item(Item=updated)

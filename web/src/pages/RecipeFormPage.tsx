@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api, ApiError } from "../lib/api";
 import { imageForTags } from "../lib/imageHelper";
 import { ACCEPTED_TYPES, uploadRecipePhoto } from "../lib/photoUpload";
+import { getDefaultPublic, getDefaultServings } from "../lib/preferences";
 import type { Ingredient, InstructionStep, Tag } from "../lib/types";
 
 const emptyIngredient = (): Ingredient => ({
@@ -10,6 +11,37 @@ const emptyIngredient = (): Ingredient => ({
   quantity: "",
   measurement_type: "",
 });
+
+const MAX_TAGS = 5;
+
+/** Textarea that grows with its content instead of scrolling in a fixed box. */
+function AutoTextarea({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [value]);
+  return (
+    <textarea
+      ref={ref}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      rows={2}
+      className="w-full resize-none rounded-tile border border-field bg-card px-3 py-2 text-[14px] leading-[1.6] text-textgray placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-accent"
+    />
+  );
+}
 
 export default function RecipeFormPage() {
   const { id } = useParams();
@@ -24,15 +56,20 @@ export default function RecipeFormPage() {
   const [instructions, setInstructions] = useState<InstructionStep[]>([
     { step_number: 1, text: "" },
   ]);
-  const [isShareable, setIsShareable] = useState(false);
-  const [servings, setServings] = useState<number | "">("");
-  const [recipeUrl, setRecipeUrl] = useState("");
-  const [showParser, setShowParser] = useState(
-    searchParams.get("import") === "1",
+  // New recipes start from the account defaults; editing loads the recipe.
+  const [isShareable, setIsShareable] = useState(() =>
+    id ? false : getDefaultPublic(),
   );
+  const [servings, setServings] = useState<number | "">(() =>
+    id ? "" : getDefaultServings(),
+  );
+  const [totalTime, setTotalTime] = useState<number | "">("");
+  const [recipeUrl, setRecipeUrl] = useState("");
   const [isParsing, setIsParsing] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
+  const [parseSummary, setParseSummary] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const [recipeTags, setRecipeTags] = useState<string[]>([]);
   const [availableTags, setAvailableTags] = useState<Tag[]>([]);
   const [showTagDropdown, setShowTagDropdown] = useState(false);
@@ -41,6 +78,8 @@ export default function RecipeFormPage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
+
+  const urlRef = useRef<HTMLInputElement>(null);
 
   // Local previews are object URLs, which leak unless explicitly revoked.
   const blobUrl = useRef<string | null>(null);
@@ -86,6 +125,11 @@ export default function RecipeFormPage() {
     api.recipes.tags().then(setAvailableTags).catch(() => setAvailableTags([]));
   }, []);
 
+  // Import is part of the page now, not a modal; ?import=1 just focuses it.
+  useEffect(() => {
+    if (searchParams.get("import") === "1") urlRef.current?.focus();
+  }, [searchParams]);
+
   useEffect(() => {
     if (!editing || !id) return;
     api.recipes.get(id).then((r) => {
@@ -96,6 +140,7 @@ export default function RecipeFormPage() {
       );
       setIsShareable(r.is_shareable);
       setServings(r.servings ?? "");
+      setTotalTime(r.total_time ?? "");
       setRecipeUrl(r.import_source_url ?? "");
       setRecipeTags(r.recipe_tags ?? []);
       setImageKey(r.image_key ?? null);
@@ -120,7 +165,7 @@ export default function RecipeFormPage() {
   function toggleTag(name: string) {
     setRecipeTags((tags) => {
       if (tags.includes(name)) return tags.filter((t) => t !== name);
-      return tags.length < 5 ? [...tags, name] : tags;
+      return tags.length < MAX_TAGS ? [...tags, name] : tags;
     });
   }
 
@@ -128,20 +173,26 @@ export default function RecipeFormPage() {
     if (!recipeUrl) return;
     setIsParsing(true);
     setParseError(null);
+    setParseSummary(null);
     api.recipes
       .parseUrl(recipeUrl)
       .then((data) => {
         setTitle(data.title);
         if (data.servings != null) setServings(data.servings);
-        setIngredients(
-          data.ingredients?.length ? data.ingredients : [emptyIngredient()],
+        if (data.total_time != null) setTotalTime(data.total_time);
+        const ing = data.ingredients?.length
+          ? data.ingredients
+          : [emptyIngredient()];
+        const steps = data.instructions?.length
+          ? reindex(data.instructions)
+          : [{ step_number: 1, text: "" }];
+        setIngredients(ing);
+        setInstructions(steps);
+        setParseSummary(
+          `Imported ${data.ingredients?.length ?? 0} ingredients and ${
+            data.instructions?.length ?? 0
+          } steps · check the quantities below`,
         );
-        setInstructions(
-          data.instructions?.length
-            ? reindex(data.instructions)
-            : [{ step_number: 1, text: "" }],
-        );
-        setShowParser(false);
       })
       .catch((err: unknown) => {
         // Surface the backend's specific reason when available.
@@ -153,15 +204,20 @@ export default function RecipeFormPage() {
       .finally(() => setIsParsing(false));
   }
 
+  const cleanTitle = title.trim();
+  const filledIngredients = ingredients.filter((i) => i.name.trim());
+  const filledSteps = instructions.filter((s) => s.text.trim());
+
   function submit() {
     setFormError(null);
-    const cleanTitle = title.trim();
-    const cleanIngredients = ingredients
-      .filter((i) => i.name.trim())
-      .map((i) => ({ ...i, name: i.name.trim() }));
-    const cleanInstructions = instructions
-      .filter((s) => s.text.trim())
-      .map((s, idx) => ({ step_number: idx + 1, text: s.text.trim() }));
+    const cleanIngredients = filledIngredients.map((i) => ({
+      ...i,
+      name: i.name.trim(),
+    }));
+    const cleanInstructions = filledSteps.map((s, idx) => ({
+      step_number: idx + 1,
+      text: s.text.trim(),
+    }));
 
     if (!cleanTitle) return setFormError("Please add a recipe title.");
     if (!cleanIngredients.length)
@@ -175,369 +231,428 @@ export default function RecipeFormPage() {
       instructions: cleanInstructions,
       is_shareable: isShareable,
       servings: servings === "" ? null : Number(servings),
+      total_time: totalTime === "" ? null : Number(totalTime),
       recipe_tags: recipeTags,
       image_key: imageKey,
       ...(recipeUrl.trim() ? { import_source_url: recipeUrl.trim() } : {}),
     };
 
-    const done = () => navigate("/recipes");
+    setSaving(true);
     (editing && id
       ? api.recipes.update(id, payload)
       : api.recipes.create(payload)
-    ).then(done);
+    )
+      .then(() => navigate("/recipes"))
+      .catch(() => {
+        setFormError("Couldn't save the recipe. Please try again.");
+        setSaving(false);
+      });
   }
 
   const filteredTags = availableTags.filter((t) =>
     t.name.toLowerCase().includes(tagSearch.toLowerCase()),
   );
 
+  // "Before you save" -- computed from the form, never decorative.
+  const checks: { ok: boolean; text: string }[] = [
+    { ok: !!cleanTitle, text: cleanTitle ? "Title set" : "Needs a title" },
+    {
+      ok: filledIngredients.length > 0,
+      text: filledIngredients.length
+        ? `${filledIngredients.length} ingredients`
+        : "Add at least one ingredient",
+    },
+    {
+      ok: filledSteps.length > 0,
+      text: filledSteps.length
+        ? `${filledSteps.length} steps`
+        : "Add at least one step",
+    },
+    {
+      ok: servings !== "",
+      text:
+        servings !== ""
+          ? `Serves ${servings}`
+          : "No servings — shopping lists can't scale without it",
+    },
+    {
+      ok: totalTime !== "",
+      text: totalTime !== "" ? `${totalTime} min` : "No time set (optional)",
+    },
+  ];
+
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8">
-      <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
-        <input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Recipe title"
-          aria-label="Recipe title"
-          className="w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent sm:flex-1"
-        />
-        <button
-          onClick={() => setShowParser(true)}
-          className="w-full rounded bg-accent px-4 py-2 text-white hover:bg-primary sm:w-auto"
-        >
-          Import from URL
-        </button>
-      </div>
-
-      {/* Visibility */}
-      <div className="mt-4 flex items-center gap-3">
-        <span className="text-sm font-medium text-textgray">Visibility</span>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={isShareable}
-          onClick={() => setIsShareable((v) => !v)}
-          className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
-            isShareable ? "bg-accent" : "bg-gray-300"
-          }`}
-        >
-          <span
-            className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-              isShareable ? "translate-x-6" : "translate-x-1"
-            }`}
-          />
-        </button>
-        <span
-          className={`text-sm font-semibold ${
-            isShareable ? "text-textgray" : "text-gray-500"
-          }`}
-        >
-          {isShareable ? "Public" : "Private"}
-        </span>
-      </div>
-      <p className="mt-1 text-xs text-gray-500">
-        Public recipes appear in others’ Discover tab.
-      </p>
-
-      {/* Servings */}
-      <div className="mt-4 flex items-center gap-2">
-        <label htmlFor="servings" className="text-sm font-medium text-textgray">
-          Serves
-        </label>
-        <input
-          id="servings"
-          type="number"
-          min={1}
-          value={servings}
-          onChange={(e) =>
-            setServings(e.target.value === "" ? "" : Number(e.target.value))
-          }
-          placeholder="—"
-          className="w-20 rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
-        />
-        <span className="text-xs text-gray-400">
-          people (used to scale shopping lists)
-        </span>
-      </div>
-
-      {/* Photo -- optional; falls back to the tag-based illustration. */}
-      <div className="mt-4">
-        <span className="text-sm font-medium text-textgray">Photo</span>
-        <div className="mt-2 flex items-center gap-4">
-          <img
-            src={imagePreview || imageForTags(recipeTags, id)}
-            alt=""
-            className={`h-24 w-24 flex-shrink-0 rounded-lg border border-gray-200 bg-gray-100 object-cover ${
-              uploading ? "opacity-50" : ""
-            }`}
-          />
-          <div className="flex min-w-0 flex-col items-start gap-1.5">
-            <label
-              className={`button-primary cursor-pointer ${
-                uploading ? "pointer-events-none opacity-60" : ""
-              }`}
-            >
-              {uploading
-                ? "Uploading…"
-                : imageKey
-                  ? "Replace photo"
-                  : "Upload photo"}
-              <input
-                type="file"
-                accept={ACCEPTED_TYPES.join(",")}
-                onChange={onPhotoChange}
-                disabled={uploading}
-                className="hidden"
-              />
-            </label>
-            {imageKey && !uploading && (
-              <button
-                type="button"
-                onClick={removePhoto}
-                className="text-xs text-gray-400 underline hover:text-red-500"
-              >
-                Remove photo
-              </button>
-            )}
-            <p className="text-xs text-gray-400">
-              Optional — we’ll pick an illustration if you skip it.
-            </p>
-          </div>
-        </div>
-        {photoError && (
-          <p className="mt-1 text-xs text-red-500">{photoError}</p>
-        )}
-      </div>
-
-      {/* Tags */}
-      <div className="relative mb-4 mt-4 flex items-start gap-4">
-        <div>
-          <button
-            type="button"
-            onClick={() => {
-              setShowTagDropdown((v) => !v);
-              setTagSearch("");
-            }}
-            className="rounded bg-accent px-3 py-1 text-sm text-white transition hover:bg-primary"
-          >
-            + Tags
+    <div className="px-4 pb-10 pt-4 sm:px-[22px]">
+      {/* Page header */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="font-serif text-[26px] font-semibold text-primary sm:text-[30px]">
+          {editing ? "Edit recipe" : "New recipe"}
+        </h1>
+        <div className="flex items-center gap-2">
+          <button onClick={() => navigate(-1)} className="pill-outline">
+            Cancel
           </button>
-          {showTagDropdown && (
-            <div className="absolute z-10 mt-1 max-h-64 w-64 overflow-y-auto rounded border bg-white p-2 shadow">
-              <input
-                value={tagSearch}
-                onChange={(e) => setTagSearch(e.target.value)}
-                placeholder="Search tags..."
-                className="mb-2 w-full rounded border p-1 text-sm"
-              />
-              <p className="mt-2 text-center text-xs text-gray-500">
-                {recipeTags.length}/5 selected
-              </p>
-              {filteredTags.map((tag) => {
-                const checked = recipeTags.includes(tag.name);
-                return (
-                  <label
-                    key={tag.id}
-                    className="flex items-center gap-2 py-1 text-sm"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      disabled={!checked && recipeTags.length >= 5}
-                      onChange={() => toggleTag(tag.name)}
-                    />
-                    {tag.name}
-                  </label>
-                );
-              })}
-            </div>
-          )}
-        </div>
-        <div className="flex flex-wrap items-center gap-2 pt-1">
-          {recipeTags.map((tag) => (
-            <span
-              key={tag}
-              className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-1 text-sm text-textgray"
-            >
-              {tag}
-              <button
-                type="button"
-                onClick={() => toggleTag(tag)}
-                aria-label={`Remove ${tag}`}
-                className="leading-none text-gray-400 hover:text-red-600"
-              >
-                ×
-              </button>
-            </span>
-          ))}
+          <button onClick={submit} disabled={saving} className="pill-primary">
+            {saving ? "Saving…" : "Save recipe"}
+          </button>
         </div>
       </div>
 
-      {/* Ingredients */}
-      <div className="mt-6 space-y-8">
-        <div>
-          <h2 className="mb-2 text-xl font-semibold text-textgray">
-            Ingredients
-          </h2>
-          <div className="flex flex-col gap-2">
-            <div className="grid grid-cols-8 gap-2 px-1 text-xs font-medium text-gray-500">
-              <span className="col-span-1">Qty</span>
-              <span className="col-span-2">Unit</span>
-              <span className="col-span-5">Ingredient</span>
-            </div>
-            {ingredients.map((ing, i) => (
-              <div key={i} className="grid grid-cols-8 items-center gap-2">
+      {formError && (
+        <p className="mt-2 text-[13px] font-semibold text-danger">{formError}</p>
+      )}
+
+      <div className="mt-4 flex flex-col gap-4 xl:flex-row">
+        <div className="min-w-0 flex-1 space-y-4">
+          {/* Title + meta */}
+          <section className="card-surface p-4 sm:p-[18px]">
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Recipe title"
+              aria-label="Recipe title"
+              className="w-full border-b border-line-soft bg-transparent pb-2 font-serif text-[26px] font-semibold text-primary placeholder:text-placeholder focus:border-terracotta focus:outline-none sm:text-[30px]"
+            />
+
+            <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-3">
+              <label className="flex items-center gap-2 text-[13px] text-muted">
+                Serves
                 <input
-                  value={ing.quantity}
+                  type="number"
+                  min={1}
+                  value={servings}
                   onChange={(e) =>
-                    updateIngredient(i, { quantity: e.target.value })
+                    setServings(
+                      e.target.value === "" ? "" : Number(e.target.value),
+                    )
                   }
-                  aria-label="Quantity"
-                  className="col-span-1 w-full rounded border px-2 py-1"
+                  placeholder="—"
+                  className="w-16 rounded border border-field bg-card px-2 py-1 text-[13px] text-primary focus:outline-none focus:ring-2 focus:ring-accent"
                 />
+              </label>
+              <label className="flex items-center gap-2 text-[13px] text-muted">
+                Takes
                 <input
-                  value={ing.measurement_type}
+                  type="number"
+                  min={1}
+                  value={totalTime}
                   onChange={(e) =>
-                    updateIngredient(i, { measurement_type: e.target.value })
+                    setTotalTime(
+                      e.target.value === "" ? "" : Number(e.target.value),
+                    )
                   }
-                  aria-label="Unit"
-                  className="col-span-2 w-full rounded border px-2 py-1"
+                  placeholder="—"
+                  className="w-16 rounded border border-field bg-card px-2 py-1 text-[13px] text-primary focus:outline-none focus:ring-2 focus:ring-accent"
                 />
-                <div className="col-span-5 flex gap-2">
-                  <input
-                    value={ing.name}
-                    onChange={(e) =>
-                      updateIngredient(i, { name: e.target.value })
-                    }
-                    aria-label="Ingredient name"
-                    className="w-full rounded border px-2 py-1"
+                min
+              </label>
+              <div className="flex items-center gap-2.5">
+                <span className="text-[13px] text-muted">Visibility</span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={isShareable}
+                  onClick={() => setIsShareable((v) => !v)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
+                    isShareable ? "bg-accent" : "bg-check"
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
+                      isShareable ? "translate-x-6" : "translate-x-1"
+                    }`}
                   />
+                </button>
+                <span className="text-[13px] font-semibold text-primary">
+                  {isShareable ? "Public" : "Private"}
+                </span>
+                {isShareable && (
+                  <span className="meta">shows in others’ Discover</span>
+                )}
+              </div>
+            </div>
+
+            {/* Tags */}
+            <div className="relative mt-4 flex flex-wrap items-center gap-2">
+              {recipeTags.map((tag) => (
+                <span key={tag} className="chip-tag gap-1">
+                  {tag}
                   <button
                     type="button"
-                    onClick={() =>
-                      setIngredients((l) => l.filter((_, idx) => idx !== i))
-                    }
-                    title="Remove"
-                    className="rounded bg-red-200 px-2 font-bold text-red-800 hover:bg-red-300"
+                    onClick={() => toggleTag(tag)}
+                    aria-label={`Remove ${tag}`}
+                    className="leading-none text-muted transition hover:text-danger"
                   >
-                    −
+                    ×
                   </button>
-                </div>
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={() => setIngredients((l) => [...l, emptyIngredient()])}
-              className="mt-2 font-bold text-accent"
-            >
-              + Add Ingredient
-            </button>
-          </div>
-        </div>
+                </span>
+              ))}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowTagDropdown((v) => !v);
+                  setTagSearch("");
+                }}
+                className="rounded-pill border border-dashed border-terracotta-line px-3 py-1 text-[12px] font-semibold text-terracotta transition hover:bg-terracotta-tint"
+              >
+                + Tag
+              </button>
+              <span className="meta">
+                {recipeTags.length} of {MAX_TAGS}
+              </span>
 
-        {/* Instructions */}
-        <div>
-          <h2 className="mb-2 text-xl font-semibold text-textgray">
-            Instructions
-          </h2>
-          <div className="flex flex-col gap-3">
-            {instructions.map((step, i) => (
-              <div key={i} className="flex items-start gap-2">
-                <span className="mt-2 font-bold">{i + 1}.</span>
-                <textarea
-                  value={step.text}
-                  onChange={(e) => updateStep(i, e.target.value)}
-                  placeholder="Instruction step"
-                  rows={3}
-                  className="min-h-[5rem] w-full resize-y rounded border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent"
-                />
+              {showTagDropdown && (
+                <div className="card-surface absolute left-0 top-9 z-10 max-h-64 w-64 overflow-y-auto p-2 shadow-sheet">
+                  <input
+                    value={tagSearch}
+                    onChange={(e) => setTagSearch(e.target.value)}
+                    placeholder="Search tags…"
+                    aria-label="Search tags"
+                    className="search-pill"
+                  />
+                  <div className="mt-2 space-y-0.5">
+                    {filteredTags.map((tag) => {
+                      const checked = recipeTags.includes(tag.name);
+                      return (
+                        <label
+                          key={tag.id}
+                          className="flex min-h-[36px] cursor-pointer items-center gap-2 rounded px-1 text-[13px] text-textgray hover:bg-paper"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            disabled={!checked && recipeTags.length >= MAX_TAGS}
+                            onChange={() => toggleTag(tag.name)}
+                            className="h-4 w-4 accent-accent"
+                          />
+                          {tag.name}
+                        </label>
+                      );
+                    })}
+                    {!filteredTags.length && (
+                      <p className="meta px-1 py-2">No tags found.</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* Editors */}
+          <div className="grid gap-4 lg:grid-cols-2">
+            <section className="card-surface p-4 sm:p-[18px]">
+              <h2 className="font-serif text-[20px] font-semibold text-primary">
+                Ingredients
+              </h2>
+              <div className="mt-3 space-y-1.5">
+                <div className="flex gap-2 px-0.5">
+                  <span className="eyebrow w-[52px]">Qty</span>
+                  <span className="eyebrow w-[68px]">Unit</span>
+                  <span className="eyebrow flex-1">Ingredient</span>
+                  <span className="w-[22px]" />
+                </div>
+                {ingredients.map((ing, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <input
+                      value={ing.quantity}
+                      onChange={(e) =>
+                        updateIngredient(i, { quantity: e.target.value })
+                      }
+                      aria-label={`Quantity for ingredient ${i + 1}`}
+                      className="h-8 w-[52px] rounded border border-field bg-card px-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-accent"
+                    />
+                    <input
+                      value={ing.measurement_type}
+                      onChange={(e) =>
+                        updateIngredient(i, { measurement_type: e.target.value })
+                      }
+                      aria-label={`Unit for ingredient ${i + 1}`}
+                      className="h-8 w-[68px] rounded border border-field bg-card px-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-accent"
+                    />
+                    <input
+                      value={ing.name}
+                      onChange={(e) =>
+                        updateIngredient(i, { name: e.target.value })
+                      }
+                      aria-label={`Ingredient ${i + 1} name`}
+                      className="h-8 min-w-0 flex-1 rounded border border-field bg-card px-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-accent"
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setIngredients((l) => l.filter((_, idx) => idx !== i))
+                      }
+                      aria-label={`Remove ingredient ${i + 1}`}
+                      className="w-[22px] flex-shrink-0 text-muted-2 transition hover:text-danger"
+                    >
+                      −
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setIngredients((l) => [...l, emptyIngredient()])
+                  }
+                  className="min-h-[44px] w-full rounded-tile border border-dashed border-terracotta-line text-[12px] font-semibold text-terracotta transition hover:bg-terracotta-tint sm:min-h-[36px]"
+                >
+                  + Add ingredient
+                </button>
+                <p className="meta pt-1">
+                  Importing from a URL fills this in for you.
+                </p>
+              </div>
+            </section>
+
+            <section className="card-surface p-4 sm:p-[18px]">
+              <h2 className="font-serif text-[20px] font-semibold text-primary">
+                Method
+              </h2>
+              <div className="mt-3 space-y-2">
+                {instructions.map((step, i) => (
+                  <div key={i} className="flex items-start gap-2.5">
+                    <span className="step-bubble mt-1">{i + 1}</span>
+                    <div className="min-w-0 flex-1">
+                      <AutoTextarea
+                        value={step.text}
+                        onChange={(v) => updateStep(i, v)}
+                        placeholder="What happens in this step?"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setInstructions((l) =>
+                          reindex(l.filter((_, idx) => idx !== i)),
+                        )
+                      }
+                      aria-label={`Remove step ${i + 1}`}
+                      className="mt-2 w-[22px] flex-shrink-0 text-muted-2 transition hover:text-danger"
+                    >
+                      −
+                    </button>
+                  </div>
+                ))}
                 <button
                   type="button"
                   onClick={() =>
                     setInstructions((l) =>
-                      reindex(l.filter((_, idx) => idx !== i)),
+                      reindex([...l, { step_number: l.length + 1, text: "" }]),
                     )
                   }
-                  title="Remove"
-                  className="mt-2 rounded bg-red-200 px-2 font-bold text-red-800 hover:bg-red-300"
+                  className="min-h-[44px] w-full rounded-tile border border-dashed border-terracotta-line text-[12px] font-semibold text-terracotta transition hover:bg-terracotta-tint sm:min-h-[36px]"
                 >
-                  −
+                  + Add step
                 </button>
               </div>
-            ))}
-            <button
-              type="button"
-              onClick={() =>
-                setInstructions((l) => [
-                  ...l,
-                  { step_number: l.length + 1, text: "" },
-                ])
-              }
-              className="font-bold text-accent"
-            >
-              + Add Step
-            </button>
+            </section>
           </div>
         </div>
-      </div>
 
-      {/* Submit */}
-      <div className="mt-8">
-        {formError && (
-          <div className="mb-3 text-center text-sm text-red-600">
-            {formError}
-          </div>
-        )}
-        <div className="flex justify-center gap-3">
-          <Link
-            to="/recipes"
-            className="rounded border border-gray-300 px-6 py-3 text-textgray transition hover:bg-gray-100"
-          >
-            Cancel
-          </Link>
-          <button
-            onClick={submit}
-            className="rounded bg-textgray px-6 py-3 text-white transition hover:bg-accent hover:text-textgray"
-          >
-            {editing ? "Save changes" : "Save Recipe"}
-          </button>
-        </div>
-      </div>
-
-      {/* Import modal */}
-      {showParser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="w-full max-w-md rounded-lg bg-white p-6">
-            <h3 className="mb-4 text-lg font-semibold text-textgray">
-              Import Recipe
-            </h3>
-            {parseError && (
-              <div className="mt-2 text-sm text-red-500">{parseError}</div>
-            )}
+        {/* Rail */}
+        <aside className="w-full flex-shrink-0 space-y-3 xl:w-[300px]">
+          <div className="panel-dark p-4">
+            <h2 className="font-serif text-[19px] font-semibold">
+              Import from a URL
+            </h2>
+            <p className="mt-0.5 text-[12px] text-accent">
+              Paste a recipe page and we’ll pull out the parts.
+            </p>
             <input
+              ref={urlRef}
               value={recipeUrl}
               onChange={(e) => setRecipeUrl(e.target.value)}
-              placeholder="Paste recipe URL"
-              className="mb-4 w-full rounded border px-3 py-2"
+              placeholder="https://…"
+              aria-label="Recipe URL"
+              className="mt-3 h-9 w-full rounded-pill border border-accent/35 bg-paper/[0.08] px-3.5 text-[13px] text-paper placeholder:text-paper/50 focus:outline-none focus:ring-2 focus:ring-accent"
             />
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setShowParser(false)}
-                className="rounded px-4 py-2 text-textgray hover:bg-gray-100"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={parseRecipeUrl}
-                disabled={isParsing}
-                className="rounded bg-accent px-4 py-2 text-white hover:bg-primary"
-              >
-                {isParsing ? "Importing..." : "Import"}
-              </button>
-            </div>
+            <button
+              onClick={parseRecipeUrl}
+              disabled={isParsing || !recipeUrl.trim()}
+              className="pill-accent mt-2 w-full"
+            >
+              {isParsing ? "Importing…" : "Import"}
+            </button>
+            {parseSummary && (
+              <p className="mt-2 text-[12px] text-accent">✓ {parseSummary}</p>
+            )}
+            {parseError && (
+              <p className="mt-2 text-[12px] text-white">! {parseError}</p>
+            )}
           </div>
-        </div>
-      )}
+
+          <div className="card-surface p-4">
+            <h2 className="font-serif text-[19px] font-semibold text-primary">
+              Photo
+            </h2>
+            <div className="mt-2.5 flex items-start gap-3">
+              <img
+                src={imagePreview || imageForTags(recipeTags, id)}
+                alt=""
+                className={`h-[120px] w-[120px] flex-shrink-0 rounded-tile border border-line bg-cardalt object-cover ${
+                  uploading ? "opacity-50" : ""
+                }`}
+              />
+              <div className="flex min-w-0 flex-col items-start gap-1.5">
+                <label
+                  className={`pill-primary cursor-pointer ${
+                    uploading ? "pointer-events-none opacity-60" : ""
+                  }`}
+                >
+                  {uploading
+                    ? "Uploading…"
+                    : imageKey
+                      ? "Replace"
+                      : "Upload photo"}
+                  <input
+                    type="file"
+                    accept={ACCEPTED_TYPES.join(",")}
+                    onChange={onPhotoChange}
+                    disabled={uploading}
+                    className="hidden"
+                  />
+                </label>
+                {imageKey && !uploading && (
+                  <button
+                    type="button"
+                    onClick={removePhoto}
+                    className="text-[12px] text-muted-2 underline hover:text-danger"
+                  >
+                    Remove photo
+                  </button>
+                )}
+                <p className="meta">
+                  {imageKey
+                    ? "Your photo."
+                    : "Picked from your tags — upload to replace."}
+                </p>
+              </div>
+            </div>
+            {photoError && (
+              <p className="mt-2 text-[12px] text-danger">{photoError}</p>
+            )}
+          </div>
+
+          <div className="card-surface p-4">
+            <h2 className="font-serif text-[19px] font-semibold text-primary">
+              Before you save
+            </h2>
+            <ul className="mt-2.5 space-y-1.5">
+              {checks.map((c) => (
+                <li
+                  key={c.text}
+                  className={`flex gap-2 text-[13px] ${
+                    c.ok ? "text-sage" : "text-terracotta"
+                  }`}
+                >
+                  <span className="font-bold">{c.ok ? "✓" : "!"}</span>
+                  <span>{c.text}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </aside>
+      </div>
     </div>
   );
 }

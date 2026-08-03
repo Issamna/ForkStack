@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from mangum import Mangum
 
 from services import (
+    feedback_service,
     recipe_service,
     user_service,
     tag_service,
@@ -36,6 +37,7 @@ app.include_router(meal_plan_service.router, prefix="/meal-plan", tags=["meal-pl
 app.include_router(
     shopping_list_service.router, prefix="/shopping-list", tags=["shopping-list"]
 )
+app.include_router(feedback_service.router, prefix="/feedback", tags=["feedback"])
 
 
 # Comma-separated list of allowed origins; defaults to the Angular dev server.

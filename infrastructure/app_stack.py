@@ -6,6 +6,7 @@ from aws_cdk import (
     aws_apigateway as apigateway,
     aws_dynamodb as dynamodb,
     aws_s3 as s3,
+    aws_iam as iam,
     RemovalPolicy,
 )
 from constructs import Construct
@@ -105,6 +106,8 @@ class AppStack(Stack):
             ],
         )
 
+        feedback_token_param = "/forkstack/github-feedback-token"
+
         entry = Path(__file__).resolve().parent.parent / "src"
 
         lambda_fn = lambda_python.PythonFunction(
@@ -128,7 +131,23 @@ class AppStack(Stack):
                 "CLERK_AUTHORIZED_PARTIES": frontend_origins,
                 "ALLOWED_ORIGINS": frontend_origins,
                 "RECIPE_PHOTO_BUCKET": photo_bucket.bucket_name,
+                # In-app feedback opens GitHub issues. The token is a
+                # SecureString in Parameter Store (free, unlike Secrets
+                # Manager) created out of band -- see DEPLOY.md -- so it never
+                # lands in the template or in git.
+                "GITHUB_FEEDBACK_PARAM": feedback_token_param,
+                "GITHUB_FEEDBACK_REPO": "Issamna/ForkStack",
             },
+        )
+
+        lambda_fn.add_to_role_policy(
+            iam.PolicyStatement(
+                actions=["ssm:GetParameter"],
+                resources=[
+                    f"arn:aws:ssm:{self.region}:{self.account}:parameter"
+                    f"{feedback_token_param}"
+                ],
+            )
         )
 
         photo_bucket.grant_read_write(lambda_fn)

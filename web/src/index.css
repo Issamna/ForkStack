@@ -3,91 +3,179 @@
 @tailwind utilities;
 
 body {
-  @apply bg-background text-textgray font-sans m-0;
+  @apply m-0 bg-paper font-sans text-textgray;
 }
 
 @layer components {
-  /* Nav / shell
-     One flex row: brand left, actions right. The old layout centred the brand
-     with `mx-auto` and pinned the avatar with `absolute right-4`, so on a phone
-     the brand and the action icons ran underneath the avatar. Nothing is
-     absolutely positioned now, and every action is a >=44px tap target. */
+  /* ---------------------------------------------------------------------
+     Warm index primitives
+     Terracotta is the action colour: one primary action per screen region.
+     `accent` means planned / done / progress -- never "click me".
+     Cards carry a 1px `line` border and no shadow.
+     --------------------------------------------------------------------- */
+
+  .app-header {
+    @apply flex h-[60px] items-center gap-4 border-b border-line bg-paper px-4 sm:px-[22px];
+  }
+  .wordmark {
+    @apply text-[18px] font-bold tracking-[-0.02em] text-primary;
+  }
+  /* 2px terracotta rule sits 3px below the text on the active item. */
+  .nav-link {
+    @apply border-b-2 border-transparent pb-[3px] text-[14px] font-medium text-muted transition hover:text-primary;
+  }
+  .nav-link-active {
+    @apply border-terracotta font-semibold text-primary;
+  }
+
+  .pill-primary {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-pill bg-terracotta px-4 py-2 text-[13px] font-semibold text-white transition hover:brightness-95 disabled:opacity-50;
+  }
+  .pill-outline {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-pill border border-field bg-card px-4 py-2 text-[13px] font-semibold text-primary transition hover:border-terracotta-line disabled:opacity-50;
+  }
+  .pill-accent {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-pill bg-accent px-4 py-2 text-[13px] font-semibold text-primary transition hover:brightness-95;
+  }
+  .icon-pill {
+    @apply inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border border-field bg-card text-primary transition hover:border-terracotta-line;
+  }
+
+  .card-surface {
+    @apply rounded-card border border-line bg-card;
+  }
+  .card-inset {
+    @apply rounded-tile bg-cardalt;
+  }
+  .panel-dark {
+    @apply rounded-card bg-primary text-paper;
+  }
+
+  .eyebrow {
+    @apply text-[11px] font-bold uppercase tracking-[0.1em] text-muted-2;
+  }
+  .eyebrow-terracotta {
+    @apply text-[11px] font-bold uppercase tracking-[0.1em] text-terracotta;
+  }
+  .meta {
+    @apply text-[12px] text-muted;
+  }
+  .kbd-hint {
+    @apply font-mono text-[11px] text-terracotta;
+  }
+
+  .search-pill {
+    @apply h-9 w-full rounded-pill border border-field bg-card px-4 text-[13px] text-primary placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-accent;
+  }
+  .chip {
+    @apply inline-flex items-center rounded-pill border border-field bg-card px-3 py-1 text-[12px] font-medium text-muted transition hover:border-terracotta-line;
+  }
+  .chip-active {
+    @apply border-terracotta bg-terracotta text-white;
+  }
+  .chip-tag {
+    @apply inline-flex items-center rounded-pill bg-terracotta-tint px-2.5 py-1 text-[12px] text-primary;
+  }
+  .chip-planned {
+    @apply inline-flex items-center rounded bg-accent px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.05em] text-primary;
+  }
+
+  /* Index rows. 52px min on mobile per the tap-target rule; denser on desktop. */
+  .index-row {
+    @apply flex w-full min-h-[52px] items-center gap-3 rounded-[10px] px-3 py-2 text-left transition hover:bg-paper sm:min-h-[42px];
+  }
+  .index-row-selected {
+    @apply border border-terracotta-line bg-terracotta-tint;
+  }
+  .index-thumb {
+    @apply h-[42px] w-[42px] flex-shrink-0 rounded-tile bg-cardalt object-cover;
+  }
+  .index-title {
+    @apply truncate font-serif text-[16px] font-semibold text-primary;
+  }
+
+  .step-bubble {
+    @apply flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-terracotta-tint text-[12px] font-semibold text-terracotta;
+  }
+  .note-plan {
+    @apply rounded-tile border border-plan-line bg-plan-bg px-3 py-2 text-[12px] text-sage;
+  }
+
+  /* ---------------------------------------------------------------------
+     Existing classes, retinted onto the new palette. Screens not yet
+     redesigned still rely on these, so the shell change can't break them.
+     --------------------------------------------------------------------- */
   .navbar {
-    @apply bg-background border-b border-gray-200 px-3 sm:px-4 py-2 flex items-center justify-between gap-2;
+    @apply flex items-center justify-between gap-2 border-b border-line bg-paper px-3 py-2 sm:px-4;
   }
   .logo-wrapper {
-    @apply flex items-center gap-2 sm:gap-3 min-w-0 transition;
+    @apply flex min-w-0 items-center gap-2 transition sm:gap-3;
   }
   .logo-image {
-    @apply h-9 w-9 sm:h-12 sm:w-12 flex-shrink-0;
+    @apply h-9 w-9 flex-shrink-0 sm:h-10 sm:w-10;
   }
   .logo-text {
-    @apply text-textgray font-bold text-xl sm:text-4xl hover:text-accent truncate;
+    @apply truncate font-serif text-xl font-bold text-primary hover:text-terracotta sm:text-3xl;
   }
   .nav-actions {
     @apply flex flex-shrink-0 items-center gap-0.5 sm:gap-1;
   }
   .nav-button {
-    @apply inline-flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg text-textgray transition touch-manipulation hover:bg-gray-100 hover:text-accent;
+    @apply inline-flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg text-primary transition touch-manipulation hover:bg-terracotta-tint hover:text-terracotta;
   }
 
-  /* Layout / cards */
   .page-wrapper {
-    @apply pt-10 pb-16 flex flex-col items-center justify-start min-h-screen px-4;
+    @apply flex min-h-screen flex-col items-center justify-start px-4 pb-16 pt-10;
   }
   .card-box {
-    @apply bg-white rounded shadow-md p-6 w-full max-w-sm;
+    @apply w-full max-w-sm rounded-card border border-line bg-card p-6;
   }
 
-  /* Typography */
   .heading-primary {
-    @apply text-3xl sm:text-4xl font-bold text-textgray;
+    @apply font-serif text-3xl font-semibold text-primary sm:text-4xl;
   }
   .heading-secondary {
-    @apply text-xl font-semibold text-textgray mb-4;
+    @apply mb-4 font-serif text-xl font-semibold text-primary;
   }
   .text-subtle {
     @apply text-base text-textgray;
   }
 
-  /* Forms / buttons */
   .form-input {
-    @apply border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent;
+    @apply rounded-lg border border-field bg-card px-3 py-2 text-sm text-primary placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-accent;
   }
   .button-primary {
-    @apply bg-textgray text-white font-semibold py-2 px-4 rounded hover:bg-accent hover:text-textgray transition text-sm;
+    @apply rounded-pill bg-terracotta px-4 py-2 text-sm font-semibold text-white transition hover:brightness-95;
   }
   .pagination-button {
-    @apply px-4 py-2 rounded bg-primary text-white hover:bg-accent hover:text-primary disabled:opacity-40 text-sm;
+    @apply rounded-pill border border-field bg-card px-4 py-2 text-sm text-primary transition hover:border-terracotta-line disabled:opacity-40;
   }
 
-  /* Recipe search + grid (used in Stage 3) */
   .search-bar {
-    @apply w-full max-w-md relative;
+    @apply relative w-full max-w-md;
   }
   .search-input {
-    @apply w-full rounded-full border border-gray-300 py-2 pl-4 pr-10 focus:outline-none focus:ring-2 focus:ring-accent text-sm;
+    @apply w-full rounded-pill border border-field bg-card py-2 pl-4 pr-10 text-sm placeholder:text-placeholder focus:outline-none focus:ring-2 focus:ring-accent;
   }
   .recipe-grid {
-    @apply grid grid-cols-2 md:grid-cols-3 gap-4 justify-center;
+    @apply grid grid-cols-2 justify-center gap-4 md:grid-cols-3;
   }
   .recipe-tile {
-    @apply bg-white rounded-lg shadow hover:shadow-md transition text-center cursor-pointer overflow-hidden w-full;
+    @apply w-full cursor-pointer overflow-hidden rounded-card border border-line bg-card text-center transition hover:border-terracotta;
     aspect-ratio: 1 / 1;
     max-width: 300px;
   }
   .recipe-image {
-    @apply w-full h-3/4 object-cover bg-gray-100;
+    @apply h-3/4 w-full bg-cardalt object-cover;
   }
   .recipe-title {
-    @apply text-sm font-semibold text-textgray mt-2 px-2 truncate;
+    @apply mt-2 truncate px-2 font-serif text-sm font-semibold text-primary;
   }
 
-  /* Meal plan */
   .meal-card {
-    @apply flex items-start gap-2 bg-white border border-gray-200 rounded-lg p-2 shadow-sm w-72 max-w-full;
+    @apply flex w-72 max-w-full items-start gap-2 rounded-card border border-line bg-card p-2;
   }
   .badge {
-    @apply text-[10px] uppercase tracking-wide bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded;
+    @apply rounded bg-terracotta-tint px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-primary;
   }
 }
