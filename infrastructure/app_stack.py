@@ -7,6 +7,11 @@ from aws_cdk import (
     aws_dynamodb as dynamodb,
     aws_s3 as s3,
     aws_iam as iam,
+    aws_logs as logs,
+    aws_cloudwatch as cloudwatch,
+    aws_cloudwatch_actions as cw_actions,
+    aws_sns as sns,
+    aws_sns_subscriptions as subs,
     RemovalPolicy,
 )
 from constructs import Construct
@@ -31,6 +36,7 @@ class AppStack(Stack):
             partition_key=dynamodb.Attribute(
                 name="recipe_id", type=dynamodb.AttributeType.STRING
             ),
+            point_in_time_recovery=True,
             billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
         )
         recipe_tag_table = dynamodb.Table(
@@ -39,6 +45,7 @@ class AppStack(Stack):
             partition_key=dynamodb.Attribute(
                 name="id", type=dynamodb.AttributeType.STRING
             ),
+            point_in_time_recovery=True,
             billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
         )
         ingredient_table = dynamodb.Table(
@@ -47,6 +54,7 @@ class AppStack(Stack):
             partition_key=dynamodb.Attribute(
                 name="ingredient_id", type=dynamodb.AttributeType.STRING
             ),
+            point_in_time_recovery=True,
             billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
             removal_policy=RemovalPolicy.RETAIN,
         )
@@ -56,6 +64,7 @@ class AppStack(Stack):
             partition_key=dynamodb.Attribute(
                 name="user_id", type=dynamodb.AttributeType.STRING
             ),
+            point_in_time_recovery=True,
             billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
             removal_policy=RemovalPolicy.RETAIN,
         )
@@ -65,6 +74,7 @@ class AppStack(Stack):
             partition_key=dynamodb.Attribute(
                 name="user_id", type=dynamodb.AttributeType.STRING
             ),
+            point_in_time_recovery=True,
             billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
             removal_policy=RemovalPolicy.RETAIN,
         )
@@ -121,6 +131,9 @@ class AppStack(Stack):
             # far too short. 29s aligns with the API Gateway integration cap.
             timeout=Duration.seconds(29),
             memory_size=512,
+            # Log groups default to never expiring: unbounded cost and
+            # unbounded retention of request data.
+            log_retention=logs.RetentionDays.ONE_MONTH,
             environment={
                 "RECIPE_TABLE": recipe_table.table_name,
                 "RECIPE_TAG_TABLE": recipe_tag_table.table_name,
@@ -157,6 +170,20 @@ class AppStack(Stack):
         ingredient_table.grant_read_write_data(lambda_fn)
         meal_plan_table.grant_read_write_data(lambda_fn)
         shopping_list_table.grant_read_write_data(lambda_fn)
+
+        # With a handful of users and no monitoring, the way you learn the API
+        # is broken is by trying to use it. One alarm closes that gap.
+        alarm_topic = sns.Topic(self, "AlarmTopic", display_name="ForkStack alarms")
+        alarm_topic.add_subscription(subs.EmailSubscription("issam.n.a@gmail.com"))
+
+        lambda_fn.metric_errors(period=Duration.minutes(5)).create_alarm(
+            self,
+            "ApiErrorAlarm",
+            alarm_description="ForkStack API returned unhandled errors",
+            threshold=1,
+            evaluation_periods=1,
+            treat_missing_data=cloudwatch.TreatMissingData.NOT_BREACHING,
+        ).add_alarm_action(cw_actions.SnsAction(alarm_topic))
 
         apigw = apigateway.LambdaRestApi(
             self,
