@@ -16,6 +16,7 @@ export default function Layout() {
   // to point at today; meal plan and shopping list keep their in-page controls
   // until those screens are redesigned.
   const onRecipes = pathname.startsWith("/recipes");
+  const onMealPlan = pathname.startsWith("/meal-plan");
 
   return (
     <div className="min-h-screen bg-paper">
@@ -59,6 +60,24 @@ export default function Layout() {
               <Link
                 to="/recipes/new"
                 aria-label="Add recipe"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-terracotta text-2xl font-semibold leading-none text-white sm:hidden"
+              >
+                +
+              </Link>
+            </>
+          )}
+          {onMealPlan && (
+            /* ?add=1 opens the plan's own dialog, which owns the entry state. */
+            <>
+              <Link
+                to="/meal-plan?add=1"
+                className="pill-primary hidden sm:inline-flex"
+              >
+                + Add to plan
+              </Link>
+              <Link
+                to="/meal-plan?add=1"
+                aria-label="Add to plan"
                 className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-terracotta text-2xl font-semibold leading-none text-white sm:hidden"
               >
                 +
