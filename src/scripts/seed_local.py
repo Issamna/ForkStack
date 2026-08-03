@@ -2,22 +2,22 @@
 
 Local-only by design: the script refuses to run against anything but a
 localhost endpoint, so it can never write dummy recipes into the real AWS
-tables. Run DynamoDB Local first:
+tables. Point it at a moto server (dev-local.sh starts one):
 
-    docker run -d --name forkstack-ddb-local -p 8001:8000 \
-        amazon/dynamodb-local:latest -jar DynamoDBLocal.jar -sharedDb -inMemory
+    moto_server -p 5001
 
-Then, with your Clerk user id (see --owner below):
+Then:
 
-    python src/scripts/seed_local.py --owner user_xxx
+    python src/scripts/seed_local.py --owner user_local_dev
 
-Recipes are owned by that id because the API scopes everything to the `sub`
-in the Clerk token -- seed under the wrong id and the app shows an empty
-cookbook. Get it by signing in at the dev server and running
-`window.Clerk.user.id` in the browser console.
+Recipes are owned by that id because the API scopes everything to the caller's
+user id -- seed under the wrong id and the app shows an empty cookbook. With
+mock auth that id is `user_local_dev` (VITE_MOCK_USER_ID / MOCK_USER_ID), so the
+default just works.
 """
 
 import argparse
+import os
 import sys
 import uuid
 from datetime import date, timedelta
@@ -280,13 +280,18 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--owner",
-        required=True,
-        help="Clerk user id to own the seeded data (window.Clerk.user.id)",
+        default=os.environ.get("MOCK_USER_ID", "user_local_dev"),
+        help="User id to own the seeded data (default: the mock-auth user)",
     )
     parser.add_argument(
         "--endpoint",
-        default="http://localhost:8001",
-        help="DynamoDB Local endpoint (must be localhost)",
+        default=os.environ.get("AWS_ENDPOINT_URL", "http://localhost:5001"),
+        help="Mock AWS endpoint (must be localhost)",
+    )
+    parser.add_argument(
+        "--bucket",
+        default=os.environ.get("RECIPE_PHOTO_BUCKET", "forkstack-photos-local"),
+        help="Photo bucket to create in the mock",
     )
     parser.add_argument(
         "--week-start",
@@ -339,6 +344,18 @@ def main() -> int:
         )
         client.get_waiter("table_exists").wait(TableName=name)
         print(f"created {name}")
+
+    s3 = boto3.client(
+        "s3",
+        endpoint_url=args.endpoint,
+        region_name="us-east-1",
+        aws_access_key_id="local",
+        aws_secret_access_key="local",
+    )
+    buckets = {b["Name"] for b in s3.list_buckets().get("Buckets", [])}
+    if args.bucket not in buckets:
+        s3.create_bucket(Bucket=args.bucket)
+        print(f"created bucket {args.bucket}")
 
     tag_table = ddb.Table("RecipeTagTable")
     for name in TAGS:

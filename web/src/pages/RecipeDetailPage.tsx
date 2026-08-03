@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { useAuth } from "@clerk/clerk-react";
+import { useAuth } from "../lib/auth";
 import { api } from "../lib/api";
 import { recipeImage } from "../lib/imageHelper";
 import { normalizeName, scaleQuantity } from "../lib/quantity";

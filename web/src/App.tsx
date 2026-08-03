@@ -1,5 +1,5 @@
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
-import { UserButton } from "@clerk/clerk-react";
+import { UserButton } from "./lib/auth";
 
 const base = import.meta.env.BASE_URL;
 

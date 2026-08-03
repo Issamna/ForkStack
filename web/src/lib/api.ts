@@ -6,6 +6,7 @@ import type {
   ShoppingList,
   Tag,
 } from "./types";
+import { getAuthToken } from "./auth";
 
 const API_BASE =
   (import.meta.env.VITE_API_BASE as string | undefined) ??
@@ -20,10 +21,9 @@ export class ApiError extends Error {
   }
 }
 
-// Clerk attaches a global once loaded; grab a fresh session token per request.
+// Token comes from the auth façade, so mock auth works without Clerk loaded.
 async function authHeader(): Promise<Record<string, string>> {
-  const clerk = (window as unknown as { Clerk?: any }).Clerk;
-  const token = clerk?.session ? await clerk.session.getToken() : null;
+  const token = await getAuthToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 

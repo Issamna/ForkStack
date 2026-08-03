@@ -1,4 +1,4 @@
-import { SignInButton, SignUpButton, useAuth } from "@clerk/clerk-react";
+import { SignInButton, SignUpButton, useAuth } from "../lib/auth";
 import { Navigate } from "react-router-dom";
 import { imageForTags } from "../lib/imageHelper";
 import { appUrl } from "../lib/paths";

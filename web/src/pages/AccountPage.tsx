@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { UserProfile, useClerk, useUser } from "@clerk/clerk-react";
+import { UserProfile, useCurrentUser, useSignOut } from "../lib/auth";
 import { useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
 import {
@@ -23,8 +23,8 @@ const SECTIONS: { key: Section; label: string }[] = [
 ];
 
 export default function AccountPage() {
-  const { user } = useUser();
-  const { signOut } = useClerk();
+  const { user } = useCurrentUser();
+  const signOut = useSignOut();
   const navigate = useNavigate();
 
   const [section, setSection] = useState<Section>("profile");
@@ -100,7 +100,7 @@ export default function AccountPage() {
             />
           ) : (
             <span className="flex h-11 w-11 items-center justify-center rounded-full bg-accent font-semibold text-primary">
-              {(user?.username || user?.firstName || "?").slice(0, 2)}
+              {(user?.username || user?.fullName || "?").slice(0, 2)}
             </span>
           )}
           <div className="min-w-0">
@@ -135,7 +135,10 @@ export default function AccountPage() {
         </nav>
 
         <button
-          onClick={() => signOut(() => navigate("/"))}
+          onClick={async () => {
+            await signOut();
+            navigate("/");
+          }}
           className="pill-outline mt-4 lg:mt-auto"
         >
           Log out

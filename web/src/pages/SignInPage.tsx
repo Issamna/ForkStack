@@ -1,4 +1,4 @@
-import { SignIn } from "@clerk/clerk-react";
+import { SignIn } from "../lib/auth";
 import { appUrl } from "../lib/paths";
 
 export default function SignInPage() {
