@@ -1,4 +1,4 @@
-aws-cdk-lib==2.189.0
+aws-cdk-lib==2.190.0
 # PythonFunction lives in the alpha package; app.py imports it, so a deploy
 # fails at synth without it. Was only ever installed locally.
 aws-cdk.aws-lambda-python-alpha==2.190.0a0
