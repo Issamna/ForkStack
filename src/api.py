@@ -24,7 +24,10 @@ if not logger.handlers:
     handler.setFormatter(formatter)
     logger.addHandler(handler)
 
-app = FastAPI(debug=True)
+# debug=False: never return stack traces / internal state to clients (details
+# still go to CloudWatch). Interactive docs and the OpenAPI schema are disabled
+# so the full API surface isn't exposed unauthenticated.
+app = FastAPI(debug=False, docs_url=None, redoc_url=None, openapi_url=None)
 app.include_router(recipe_service.router, prefix="/recipes", tags=["recipes"])
 app.include_router(user_service.router, prefix="/users", tags=["users"])
 app.include_router(tag_service.router, prefix="/tags", tags=["tags"])
@@ -33,11 +36,6 @@ app.include_router(meal_plan_service.router, prefix="/meal-plan", tags=["meal-pl
 app.include_router(
     shopping_list_service.router, prefix="/shopping-list", tags=["shopping-list"]
 )
-
-
-@app.get("/openapi.json")
-def get_openapi():
-    return app.openapi()
 
 
 # Comma-separated list of allowed origins; defaults to the Angular dev server.

@@ -1,6 +1,8 @@
+import contextlib
 import ipaddress
 import re
 import socket
+import threading
 from urllib.parse import urljoin, urlparse
 
 import requests
@@ -9,6 +11,9 @@ from fastapi import HTTPException
 from recipe_scrapers import scrape_html
 
 from utils.quantity import parse_servings
+
+# Cap the fetched body so a huge/hostile page can't exhaust Lambda memory.
+_MAX_HTML_BYTES = 3_000_000
 
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -47,11 +52,30 @@ _QTY_RE = re.compile(
 )
 
 
-def assert_safe_url(url: str) -> None:
-    """Reject URLs that could be used for SSRF (internal/metadata addresses).
+def _is_disallowed_ip(ip_str: str) -> bool:
+    ip = ipaddress.ip_address(ip_str)
+    # IPv4-mapped IPv6 (e.g. ::ffff:127.0.0.1) would otherwise dodge the IPv4
+    # loopback/private checks, so unwrap it first.
+    if getattr(ip, "ipv4_mapped", None) is not None:
+        ip = ip.ipv4_mapped
+    return (
+        ip.is_private
+        or ip.is_loopback
+        or ip.is_link_local
+        or ip.is_reserved
+        or ip.is_multicast
+        or ip.is_unspecified
+    )
+
+
+def assert_safe_url(url: str) -> str:
+    """Reject URLs that could be used for SSRF and return a validated IP to pin.
 
     Validates the scheme and ensures every address the host resolves to is a
-    public, routable IP before any HTTP request is made.
+    public, routable IP. Returns one of those validated IPs so the caller can
+    connect to it directly -- otherwise ``requests`` re-resolves the hostname
+    and a low-TTL attacker DNS could rebind it to an internal address between
+    this check and the request (TOCTOU).
     """
     parsed = urlparse(url)
     if parsed.scheme not in ("http", "https"):
@@ -67,33 +91,69 @@ def assert_safe_url(url: str) -> None:
         raise HTTPException(status_code=400, detail="Could not resolve host")
 
     for info in addr_infos:
-        ip = ipaddress.ip_address(info[4][0])
-        if (
-            ip.is_private
-            or ip.is_loopback
-            or ip.is_link_local
-            or ip.is_reserved
-            or ip.is_multicast
-            or ip.is_unspecified
-        ):
+        if _is_disallowed_ip(info[4][0]):
             raise HTTPException(
                 status_code=400, detail="URL resolves to a disallowed address"
             )
+    return addr_infos[0][4][0]
+
+
+_dns_lock = threading.Lock()
+
+
+@contextlib.contextmanager
+def _pin_host(host: str, ip: str):
+    """Force ``host`` to resolve to the already-validated ``ip`` for the
+    duration of a request, closing the DNS-rebinding window. TLS SNI and cert
+    validation still use ``host`` (only address resolution is pinned). The lock
+    serializes the brief global patch; parse-url is low-throughput and Lambda
+    runs one invocation per container, so this is not a bottleneck."""
+    real_getaddrinfo = socket.getaddrinfo
+
+    def pinned(h, *args, **kwargs):
+        return real_getaddrinfo(ip if h == host else h, *args, **kwargs)
+
+    with _dns_lock:
+        socket.getaddrinfo = pinned
+        try:
+            yield
+        finally:
+            socket.getaddrinfo = real_getaddrinfo
+
+
+def _read_capped(resp) -> str:
+    """Read the body up to _MAX_HTML_BYTES, rejecting non-HTML and oversized
+    responses so parse-url can't be used to pull huge/binary files into memory."""
+    ctype = resp.headers.get("Content-Type", "").lower()
+    if ctype and "html" not in ctype and "text" not in ctype:
+        raise HTTPException(status_code=422, detail="That URL isn't a web page.")
+
+    chunks, total = [], 0
+    for chunk in resp.iter_content(chunk_size=16384):
+        total += len(chunk)
+        if total > _MAX_HTML_BYTES:
+            raise HTTPException(status_code=422, detail="That page is too large to import.")
+        chunks.append(chunk)
+    return b"".join(chunks).decode(resp.encoding or "utf-8", errors="replace")
 
 
 def _fetch_html(url: str, max_redirects: int = 4) -> str:
     """Fetch a page, validating every URL (including each redirect hop) so the
-    SSRF guard can't be bypassed via a redirect to an internal address."""
+    SSRF guard can't be bypassed via a redirect to an internal address, and
+    pinning each connection to the validated IP to prevent DNS rebinding."""
     current = url
     for _ in range(max_redirects + 1):
-        assert_safe_url(current)
+        ip = assert_safe_url(current)
+        host = urlparse(current).hostname
         try:
-            resp = requests.get(
-                current,
-                headers={"User-Agent": USER_AGENT},
-                timeout=15,
-                allow_redirects=False,
-            )
+            with _pin_host(host, ip):
+                resp = requests.get(
+                    current,
+                    headers={"User-Agent": USER_AGENT},
+                    timeout=15,
+                    allow_redirects=False,
+                    stream=True,
+                )
         except requests.RequestException:
             raise HTTPException(status_code=400, detail="Couldn't reach that site.")
 
@@ -113,7 +173,7 @@ def _fetch_html(url: str, max_redirects: int = 4) -> str:
                 status_code=502,
                 detail=f"The site returned an error (HTTP {resp.status_code}).",
             )
-        return resp.text
+        return _read_capped(resp)
     raise HTTPException(status_code=400, detail="Too many redirects.")
 
 
@@ -124,6 +184,10 @@ def parse_ingredient(text: str):
     identify an amount or unit -- a clean unparsed line beats a mangled one.
     """
     raw = text.strip()
+    # Drop per-ingredient cost annotations like "($0.32)" and footnote markers
+    # ("chili powder *") that some sites (e.g. Budget Bytes) put in the text.
+    raw = re.sub(r"\s*\(\$[^)]*\)", "", raw)
+    raw = re.sub(r"\s*\*+", "", raw).strip()
     normalized = raw
     for symbol, ascii_fraction in _UNICODE_FRACTIONS.items():
         normalized = normalized.replace(symbol, " " + ascii_fraction)

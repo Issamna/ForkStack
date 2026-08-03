@@ -7,6 +7,7 @@ from typing import List
 
 from dependencies import get_current_user
 from models.ingredient import Ingredient
+from utils.db import scan_all
 
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table(os.environ.get("INGREDIENT_TABLE", "IngredientTable"))
@@ -24,8 +25,7 @@ def _require_ingredient(ingredient_id: str) -> dict:
 
 @router.get("", response_model=List[Ingredient])
 def list_all_ingredients(current_user_id: str = Depends(get_current_user)):
-    response = table.scan()
-    items = response.get("Items", [])
+    items = scan_all(table)
     return sorted(items, key=lambda x: x["name"].lower())
 
 
@@ -43,8 +43,7 @@ def create_ingredient(
     normalized_name = ingredient.name.strip().lower()
 
     # Check for duplicates
-    response = table.scan()
-    for item in response.get("Items", []):
+    for item in scan_all(table):
         if item["name"].strip().lower() == normalized_name:
             raise HTTPException(status_code=400, detail="Ingredient already exists")
 
@@ -53,22 +52,9 @@ def create_ingredient(
     return ingredient
 
 
-@router.put("/{ingredient_id}", response_model=Ingredient)
-def update_ingredient(
-    ingredient_id: str,
-    updated: Ingredient,
-    current_user_id: str = Depends(get_current_user),
-):
-    _require_ingredient(ingredient_id)
-    updated.ingredient_id = ingredient_id
-    table.put_item(Item=updated.dict())
-    return updated
-
-
-@router.delete("/{ingredient_id}")
-def delete_ingredient(
-    ingredient_id: str, current_user_id: str = Depends(get_current_user)
-):
-    _require_ingredient(ingredient_id)
-    table.delete_item(Key={"ingredient_id": ingredient_id})
-    return {"message": "Ingredient deleted"}
+# This is a SHARED, catalog for everyone (seeded from USDA, extended when a user
+# enters an ingredient that isn't in it yet). It is intentionally append-only:
+# any signed-in user may add a missing ingredient, but no one can edit or delete
+# an existing entry -- otherwise a single account could overwrite or wipe the
+# catalog for all users. Curate bad entries directly in DynamoDB, or add an
+# admin-gated route later if in-app curation is needed.

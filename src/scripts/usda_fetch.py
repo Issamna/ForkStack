@@ -2,8 +2,13 @@ import os
 import requests
 import json
 
-FORKSTACK_API_URL = "https://e6q9keyixh.execute-api.us-east-1.amazonaws.com/prod/ingredients"
-USDA_API_KEY = "0hN7YzOEdAh9jqCWuNhDgYHLX8ex8IAwzHN1M3Oe"
+FORKSTACK_API_URL = os.environ.get(
+    "FORKSTACK_API_URL",
+    "https://e6q9keyixh.execute-api.us-east-1.amazonaws.com/prod/ingredients",
+)
+# Read from the environment; matches usda_mass.py. The previously hard-coded key
+# was committed and must be rotated at https://fdc.nal.usda.gov/.
+USDA_API_KEY = os.environ.get("USDA_API_KEY")
 USDA_SEARCH_URL = "https://api.nal.usda.gov/fdc/v1/foods/search"
 USDA_DETAILS_URL = "https://api.nal.usda.gov/fdc/v1/food/{fdc_id}"
 

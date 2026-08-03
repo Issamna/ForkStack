@@ -23,6 +23,9 @@ class RecipeIn(BaseModel):
     import_source_url: Optional[str] = None
     recipe_tags: Optional[list[str]] = []
     servings: Optional[int] = None
+    # S3 object key for a user-uploaded photo; None falls back to the
+    # tag-based placeholder the frontend picks.
+    image_key: Optional[str] = None
 
     @field_validator("import_source_url")
     def validate_url(cls, v):
@@ -33,6 +36,18 @@ class RecipeIn(BaseModel):
 
 class RecipeOut(RecipeIn):
     recipe_id: str
+    # Presigned GET minted per response -- short-lived, so never persisted.
+    image_url: Optional[str] = None
+
+
+class PhotoUploadIn(BaseModel):
+    content_type: str
+
+
+class PhotoUploadOut(BaseModel):
+    image_key: str
+    url: str
+    fields: dict
 
 
 class URLIn(BaseModel):

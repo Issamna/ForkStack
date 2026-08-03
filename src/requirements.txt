@@ -1,9 +1,7 @@
 fastapi
 mangum
 pydantic[email]
-passlib
 python-jose
-python-multipart
 beautifulsoup4
 recipe-scrapers
 requests

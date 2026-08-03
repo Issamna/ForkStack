@@ -3,11 +3,11 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from api import app
-from utils.auth import create_access_token
+from tests.helpers import auth
 
 client = TestClient(app)
 USER = "mp-user"
-AUTH = {"Authorization": f"Bearer {create_access_token({'sub': USER})}"}
+AUTH = auth(USER)
 
 ENTRY = {
     "id": "e1",

@@ -4,12 +4,12 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from api import app
-from utils.auth import create_access_token
+from tests.helpers import auth
 from utils.pdf import build_recipe_pdf
 
 client = TestClient(app)
 USER = "pdf-user"
-AUTH = {"Authorization": f"Bearer {create_access_token({'sub': USER})}"}
+AUTH = auth(USER)
 
 RECIPE = {
     "recipe_id": "r1",
