@@ -71,6 +71,27 @@ Until that variable is set, the backend job fails and — because the frontend j
 frontend deploy without its matching backend is the failure mode this pipeline
 exists to prevent.
 
+## In-app feedback token
+
+`POST /feedback` opens a GitHub issue. The token lives in SSM Parameter Store as
+a SecureString — free, unlike Secrets Manager, which is why it isn't a secret —
+and the Lambda is granted `ssm:GetParameter` on exactly that path.
+
+Create a fine-grained personal access token with **Issues: read and write** on
+`Issamna/ForkStack` only, then:
+
+```bash
+aws ssm put-parameter \
+  --name /forkstack/github-feedback-token \
+  --type SecureString \
+  --value ghp_xxx \
+  --overwrite
+```
+
+Until it exists the endpoint returns 503 with a message telling the user to open
+an issue directly — it never accepts a report it can't store, because there is
+no local storage to fall back on.
+
 ## Deploying by hand
 
 Only if CI is unavailable. Both, from the same commit:

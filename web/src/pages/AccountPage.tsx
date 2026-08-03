@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { UserProfile, useCurrentUser, useSignOut } from "../lib/auth";
 import { useNavigate } from "react-router-dom";
-import { api } from "../lib/api";
+import { api, ApiError } from "../lib/api";
 import {
   getDefaultPublic,
   getDefaultServings,
@@ -14,12 +14,13 @@ import {
 } from "../lib/preferences";
 import { ALL_DAYS, readWeekStartPref } from "../lib/week";
 
-type Section = "profile" | "preferences" | "data";
+type Section = "profile" | "preferences" | "data" | "feedback";
 
 const SECTIONS: { key: Section; label: string }[] = [
   { key: "profile", label: "Profile & sign-in" },
   { key: "preferences", label: "Cooking preferences" },
   { key: "data", label: "Data & export" },
+  { key: "feedback", label: "Report a problem" },
 ];
 
 export default function AccountPage() {
@@ -35,6 +36,13 @@ export default function AccountPage() {
   const [isPublic, setIsPublic] = useState(getDefaultPublic);
   const [listView, setView] = useState<ListView>(getListView);
   const [savedAt, setSavedAt] = useState<string | null>(null);
+
+  const [fbType, setFbType] = useState<"bug" | "feature">("bug");
+  const [fbTitle, setFbTitle] = useState("");
+  const [fbBody, setFbBody] = useState("");
+  const [fbSending, setFbSending] = useState(false);
+  const [fbResult, setFbResult] = useState<{ number: number; url: string } | null>(null);
+  const [fbError, setFbError] = useState<string | null>(null);
 
   const [exporting, setExporting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -73,6 +81,28 @@ export default function AccountPage() {
       URL.revokeObjectURL(url);
     } finally {
       setExporting(false);
+    }
+  }
+
+  async function sendFeedback(e: React.FormEvent) {
+    e.preventDefault();
+    if (!fbTitle.trim() || fbSending) return;
+    setFbSending(true);
+    setFbError(null);
+    setFbResult(null);
+    try {
+      const res = await api.feedback.create(fbType, fbTitle.trim(), fbBody.trim());
+      setFbResult(res);
+      setFbTitle("");
+      setFbBody("");
+    } catch (err) {
+      setFbError(
+        err instanceof ApiError
+          ? err.message
+          : "Couldn't send that. Please try again.",
+      );
+    } finally {
+      setFbSending(false);
     }
   }
 
@@ -258,6 +288,87 @@ export default function AccountPage() {
                 </button>
               </div>
             </div>
+          </section>
+        )}
+
+        {section === "feedback" && (
+          <section className="card-surface p-4 sm:p-[18px]">
+            <h2 className="font-serif text-[21px] font-semibold text-primary">
+              Report a problem
+            </h2>
+            <p className="meta mt-1">
+              Goes straight to the project's issue tracker. You'll get a link to
+              follow it.
+            </p>
+
+            <form onSubmit={sendFeedback} className="mt-4 space-y-3">
+              <div className="flex gap-1.5">
+                {(
+                  [
+                    ["bug", "Something's broken"],
+                    ["feature", "Idea for a feature"],
+                  ] as const
+                ).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setFbType(value)}
+                    className={`chip ${fbType === value ? "chip-active" : ""}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              <input
+                value={fbTitle}
+                onChange={(e) => setFbTitle(e.target.value)}
+                maxLength={200}
+                placeholder={
+                  fbType === "bug"
+                    ? "e.g. Can't tick items off the shopping list"
+                    : "e.g. Let me sort recipes by how often I cook them"
+                }
+                aria-label="Summary"
+                className="form-input w-full"
+              />
+              <textarea
+                value={fbBody}
+                onChange={(e) => setFbBody(e.target.value)}
+                maxLength={5000}
+                rows={5}
+                placeholder={
+                  fbType === "bug"
+                    ? "What did you do, what did you expect, and what happened instead?"
+                    : "What would it let you do that you can't today?"
+                }
+                aria-label="Details"
+                className="form-input w-full resize-y"
+              />
+
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="submit"
+                  disabled={!fbTitle.trim() || fbSending}
+                  className="pill-primary"
+                >
+                  {fbSending ? "Sending…" : "Send report"}
+                </button>
+                {fbResult && (
+                  <a
+                    href={fbResult.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[13px] font-semibold text-sage hover:underline"
+                  >
+                    ✓ Filed as #{fbResult.number} — track it here ↗
+                  </a>
+                )}
+                {fbError && (
+                  <span className="text-[13px] text-danger">{fbError}</span>
+                )}
+              </div>
+            </form>
           </section>
         )}
 

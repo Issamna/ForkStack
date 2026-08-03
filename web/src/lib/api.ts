@@ -100,4 +100,11 @@ export const api = {
   users: {
     deleteMyData: () => req<void>("/users/me", { method: "DELETE" }),
   },
+  feedback: {
+    create: (type: "bug" | "feature", title: string, description: string) =>
+      req<{ number: number; url: string }>("/feedback", {
+        method: "POST",
+        body: JSON.stringify({ type, title, description }),
+      }),
+  },
 };
