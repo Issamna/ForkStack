@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { api } from "../lib/api";
 import type { ShoppingItem } from "../lib/types";
@@ -62,28 +69,41 @@ export default function ShoppingListPage() {
     generate();
   }, [generate]);
 
+  // Saves are fire-and-forget, so a fast second tap can have its PUT answered
+  // before the first one's. Only the newest response may overwrite local state
+  // -- otherwise a stale echo silently reverts the tap the user just made.
+  const saveSeq = useRef(0);
+
   // The server assigns categories, so sync back its version of the list.
   const save = useCallback(
     (next: ShoppingItem[]) => {
       setItems(next);
+      const seq = ++saveSeq.current;
       api.shoppingList
         .save(week, next)
         .then((res) => {
-          if (res.items) setItems(res.items);
+          if (seq === saveSeq.current && res.items) setItems(res.items);
         })
         .catch(() => {});
     },
     [week],
   );
 
-  function toggle(item: ShoppingItem) {
-    save(items.map((i) => (i === item ? { ...i, checked: !i.checked } : i)));
+  // Addressed by index, not object identity: every save swaps in fresh objects
+  // from the server, so an `i === item` comparison matches nothing once a
+  // response has landed mid-interaction.
+  function toggle(index: number) {
+    save(
+      items.map((i, n) => (n === index ? { ...i, checked: !i.checked } : i)),
+    );
   }
-  function remove(item: ShoppingItem) {
-    if (item.custom) {
-      save(items.filter((i) => i !== item));
+  function remove(index: number) {
+    const target = items[index];
+    if (!target) return;
+    if (target.custom) {
+      save(items.filter((_, n) => n !== index));
     } else {
-      save(items.map((i) => (i === item ? { ...i, removed: true } : i)));
+      save(items.map((i, n) => (n === index ? { ...i, removed: true } : i)));
     }
   }
   function restoreRemoved() {
@@ -110,13 +130,21 @@ export default function ShoppingListPage() {
     save(next);
   }
 
-  const visible = useMemo(() => items.filter((i) => !i.removed), [items]);
+  // Each row keeps the item's index in `items` so handlers can address it
+  // without relying on object identity surviving a save round-trip.
+  const visible = useMemo(
+    () =>
+      items
+        .map((item, index) => ({ item, index }))
+        .filter(({ item }) => !item.removed),
+    [items],
+  );
   const removedCount = items.filter((i) => i.removed).length;
-  const remaining = visible.filter((i) => !i.checked).length;
+  const remaining = visible.filter(({ item }) => !item.checked).length;
   const grouped = CATEGORY_ORDER.map((c) => ({
     label: CATEGORY_LABELS[c],
-    items: visible.filter((i) => (i.category || "other") === c),
-  })).filter((g) => g.items.length);
+    rows: visible.filter(({ item }) => (item.category || "other") === c),
+  })).filter((g) => g.rows.length);
 
   const weekLabel = useMemo(() => {
     const start = new Date(week + "T00:00:00");
@@ -176,54 +204,55 @@ export default function ShoppingListPage() {
               </p>
               <ul className="divide-y rounded-lg border border-gray-200 bg-white">
                 {grouped.map((group) => (
-                  <div key={group.label}>
+                  <Fragment key={group.label}>
                     <li className="bg-gray-50 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
                       {group.label}
                     </li>
-                    {group.items.map((item, idx) => (
-                      <li
-                        key={`${group.label}-${idx}`}
-                        className="flex items-start gap-3 px-4 py-2.5"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={item.checked}
-                          onChange={() => toggle(item)}
-                          className="mt-1 h-4 w-4 flex-shrink-0 cursor-pointer accent-accent"
-                        />
-                        <div
-                          className={`min-w-0 flex-1 ${
-                            item.checked ? "opacity-50" : ""
-                          }`}
-                        >
+                    {group.rows.map(({ item, index }) => (
+                      <li key={index} className="flex items-stretch">
+                        {/* The whole row is the tap target -- a bare 16px
+                            checkbox is far below the ~44px a thumb can hit. */}
+                        <label className="flex min-h-[44px] flex-1 cursor-pointer touch-manipulation items-start gap-3 py-3 pl-4 pr-2">
+                          <input
+                            type="checkbox"
+                            checked={item.checked}
+                            onChange={() => toggle(index)}
+                            className="mt-0.5 h-5 w-5 flex-shrink-0 cursor-pointer accent-accent"
+                          />
                           <div
-                            className={`text-sm ${
-                              item.checked ? "line-through" : ""
+                            className={`min-w-0 flex-1 ${
+                              item.checked ? "opacity-50" : ""
                             }`}
                           >
-                            <span className="font-semibold text-textgray">
-                              {item.quantity} {item.unit}
-                            </span>{" "}
-                            {item.name}
-                          </div>
-                          {item.sources?.length ? (
                             <div
-                              className="truncate text-xs text-gray-400"
-                              title={item.sources.join(", ")}
+                              className={`text-sm ${
+                                item.checked ? "line-through" : ""
+                              }`}
                             >
-                              for {item.sources.join(", ")}
+                              <span className="font-semibold text-textgray">
+                                {item.quantity} {item.unit}
+                              </span>{" "}
+                              {item.name}
                             </div>
-                          ) : null}
-                          {item.custom && (
-                            <div className="text-xs text-gray-400">
-                              added by you
-                            </div>
-                          )}
-                        </div>
+                            {item.sources?.length ? (
+                              <div
+                                className="truncate text-xs text-gray-400"
+                                title={item.sources.join(", ")}
+                              >
+                                for {item.sources.join(", ")}
+                              </div>
+                            ) : null}
+                            {item.custom && (
+                              <div className="text-xs text-gray-400">
+                                added by you
+                              </div>
+                            )}
+                          </div>
+                        </label>
                         <button
                           type="button"
-                          onClick={() => remove(item)}
-                          className="mt-0.5 flex-shrink-0 px-1 text-gray-300 transition hover:text-red-500"
+                          onClick={() => remove(index)}
+                          className="flex w-11 flex-shrink-0 items-center justify-center text-gray-300 transition hover:text-red-500"
                           aria-label={`Remove ${item.name}`}
                           title="Remove from list"
                         >
@@ -231,7 +260,7 @@ export default function ShoppingListPage() {
                         </button>
                       </li>
                     ))}
-                  </div>
+                  </Fragment>
                 ))}
               </ul>
             </>
