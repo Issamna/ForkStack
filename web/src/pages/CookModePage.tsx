@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../lib/api";
-import { normalizeName } from "../lib/quantity";
+import { ingredientsForStep } from "../lib/steps";
 import type { Recipe } from "../lib/types";
 
 /**
@@ -47,19 +47,12 @@ export default function CookModePage() {
   const steps = recipe?.instructions ?? [];
   const current = steps[step];
 
-  /**
-   * Ingredients this step actually mentions. Derived by matching ingredient
-   * names against the step text -- the API has no step/ingredient mapping, so
-   * this is a best-effort read of the words already there, not invented data.
-   */
-  const forThisStep = useMemo(() => {
-    if (!recipe || !current) return [];
-    const text = ` ${normalizeName(current.text)} `;
-    return recipe.ingredients.filter((i) => {
-      const n = normalizeName(i.name);
-      return n.length > 2 && text.includes(n);
-    });
-  }, [recipe, current]);
+  // Ingredients this step actually mentions -- see lib/steps.ts for why the
+  // matching is whole-word rather than a substring test.
+  const forThisStep = useMemo(
+    () => (recipe && current ? ingredientsForStep(recipe.ingredients, current.text) : []),
+    [recipe, current],
+  );
 
   if (!recipe) {
     return (
