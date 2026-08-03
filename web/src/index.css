@@ -7,21 +7,28 @@ body {
 }
 
 @layer components {
-  /* Nav / shell */
+  /* Nav / shell
+     One flex row: brand left, actions right. The old layout centred the brand
+     with `mx-auto` and pinned the avatar with `absolute right-4`, so on a phone
+     the brand and the action icons ran underneath the avatar. Nothing is
+     absolutely positioned now, and every action is a >=44px tap target. */
   .navbar {
-    @apply bg-background border-b border-gray-200 px-4 py-3 flex items-center justify-between flex-wrap relative;
+    @apply bg-background border-b border-gray-200 px-3 sm:px-4 py-2 flex items-center justify-between gap-2;
   }
   .logo-wrapper {
-    @apply flex items-center gap-3 mx-auto;
+    @apply flex items-center gap-2 sm:gap-3 min-w-0 transition;
   }
   .logo-image {
-    @apply h-12 w-12;
+    @apply h-9 w-9 sm:h-12 sm:w-12 flex-shrink-0;
   }
   .logo-text {
-    @apply text-textgray font-bold text-3xl sm:text-5xl hover:text-accent;
+    @apply text-textgray font-bold text-xl sm:text-4xl hover:text-accent truncate;
   }
-  .add-button {
-    @apply text-textgray font-semibold text-2xl sm:text-4xl hover:text-accent inline-flex items-center;
+  .nav-actions {
+    @apply flex flex-shrink-0 items-center gap-0.5 sm:gap-1;
+  }
+  .nav-button {
+    @apply inline-flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg text-textgray transition touch-manipulation hover:bg-gray-100 hover:text-accent;
   }
 
   /* Layout / cards */

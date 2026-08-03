@@ -8,26 +8,32 @@ export default function Layout() {
   return (
     <>
       <nav className="navbar">
-        <div className="logo-wrapper">
-          <Link to="/recipes" className="flex items-center gap-3 transition">
-            <img
-              src={`${base}assets/logo.png`}
-              alt="Forkstack"
-              className="logo-image"
-            />
-            <span className="logo-text">fork-stack</span>
-          </Link>
-          <Link to="/recipes/new" className="add-button ml-4" title="Add recipe">
+        <Link to="/recipes" className="logo-wrapper">
+          <img
+            src={`${base}assets/logo.png`}
+            alt="Forkstack"
+            className="logo-image"
+          />
+          <span className="logo-text">fork-stack</span>
+        </Link>
+
+        <div className="nav-actions">
+          <Link
+            to="/recipes/new"
+            className="nav-button text-3xl font-semibold leading-none"
+            aria-label="Add recipe"
+            title="Add recipe"
+          >
             +
           </Link>
           <Link
             to="/meal-plan"
-            className="add-button ml-2"
+            className="nav-button"
             aria-label="Meal plan"
             title="Meal plan"
           >
             <svg
-              className="h-7 w-7 sm:h-9 sm:w-9"
+              className="h-6 w-6"
               fill="none"
               stroke="currentColor"
               strokeWidth="2"
@@ -43,12 +49,12 @@ export default function Layout() {
           </Link>
           <Link
             to="/shopping-list"
-            className="add-button ml-2"
+            className="nav-button"
             aria-label="Shopping list"
             title="Shopping list"
           >
             <svg
-              className="h-7 w-7 sm:h-9 sm:w-9"
+              className="h-6 w-6"
               fill="none"
               stroke="currentColor"
               strokeWidth="2"
@@ -61,9 +67,10 @@ export default function Layout() {
               <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
             </svg>
           </Link>
-        </div>
-        <div className="absolute right-4 top-3 flex items-center gap-4">
-          <UserButton />
+          {/* Sized to match the icon buttons so the row stays on one baseline. */}
+          <div className="ml-1 flex h-11 w-11 items-center justify-center">
+            <UserButton />
+          </div>
         </div>
       </nav>
       <main className="p-4">
