@@ -85,3 +85,21 @@ test.describe("creating a recipe", () => {
     await expect(page.getByText("Please add a recipe title.")).toBeVisible();
   });
 });
+
+test.describe("account screen", () => {
+  test("is reachable from the header", async ({ page }) => {
+    // Regression: the route existed but nothing linked to it, so cooking
+    // preferences, export, delete and the bug reporter were all unreachable.
+    await page.goto("/recipes");
+    await page.getByRole("link", { name: "Account and settings" }).click();
+    await expect(page).toHaveURL(/\/account$/);
+    await expect(page.getByRole("button", { name: "Report a problem" })).toBeVisible();
+  });
+
+  test("the bug reporter form renders", async ({ page }) => {
+    await page.goto("/account");
+    await page.getByRole("button", { name: "Report a problem" }).click();
+    await expect(page.getByLabel("Summary")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Send report" })).toBeVisible();
+  });
+});
