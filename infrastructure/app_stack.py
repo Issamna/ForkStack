@@ -5,6 +5,7 @@ from aws_cdk import (
     aws_lambda_python_alpha as lambda_python,
     aws_apigateway as apigateway,
     aws_dynamodb as dynamodb,
+    aws_s3 as s3,
     RemovalPolicy,
 )
 from constructs import Construct
@@ -18,12 +19,18 @@ class AppStack(Stack):
         # User identity lives in Clerk now -- no UserTable. App data is keyed by
         # the Clerk user id (the token `sub`).
 
+        # All tables are PAY_PER_REQUEST. CDK's default is PROVISIONED at 5 RCU +
+        # 5 WCU per table, which bills 24/7 whether or not anything reads or
+        # writes -- with five tables that is 25+25 units of idle capacity, right
+        # at the always-free ceiling, and any sixth table tips the whole account
+        # into charges. On-demand costs nothing when idle. Don't switch back.
         recipe_table = dynamodb.Table(
             self,
             "RecipeTable",
             partition_key=dynamodb.Attribute(
                 name="recipe_id", type=dynamodb.AttributeType.STRING
             ),
+            billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
         )
         recipe_tag_table = dynamodb.Table(
             self,
@@ -31,6 +38,7 @@ class AppStack(Stack):
             partition_key=dynamodb.Attribute(
                 name="id", type=dynamodb.AttributeType.STRING
             ),
+            billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
         )
         ingredient_table = dynamodb.Table(
             self,
@@ -38,6 +46,7 @@ class AppStack(Stack):
             partition_key=dynamodb.Attribute(
                 name="ingredient_id", type=dynamodb.AttributeType.STRING
             ),
+            billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
             removal_policy=RemovalPolicy.RETAIN,
         )
         meal_plan_table = dynamodb.Table(
@@ -46,6 +55,7 @@ class AppStack(Stack):
             partition_key=dynamodb.Attribute(
                 name="user_id", type=dynamodb.AttributeType.STRING
             ),
+            billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
             removal_policy=RemovalPolicy.RETAIN,
         )
         shopping_list_table = dynamodb.Table(
@@ -54,6 +64,7 @@ class AppStack(Stack):
             partition_key=dynamodb.Attribute(
                 name="user_id", type=dynamodb.AttributeType.STRING
             ),
+            billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
             removal_policy=RemovalPolicy.RETAIN,
         )
 
@@ -66,6 +77,32 @@ class AppStack(Stack):
             "https://issamna.github.io,"
             "https://ds0s04vkdxys7.cloudfront.net,"
             "http://localhost:5173"
+        )
+
+        # User-uploaded recipe photos. Private: the browser reaches it only
+        # through presigned URLs the API mints, so no public access and no
+        # CloudFront distribution of its own. CORS is needed because uploads go
+        # browser -> S3 directly (presigned POST) rather than through Lambda.
+        photo_bucket = s3.Bucket(
+            self,
+            "RecipePhotoBucket",
+            block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
+            encryption=s3.BucketEncryption.S3_MANAGED,
+            enforce_ssl=True,
+            removal_policy=RemovalPolicy.RETAIN,
+            cors=[
+                s3.CorsRule(
+                    allowed_methods=[s3.HttpMethods.POST, s3.HttpMethods.GET],
+                    allowed_origins=frontend_origins.split(","),
+                    allowed_headers=["*"],
+                    max_age=3000,
+                )
+            ],
+            lifecycle_rules=[
+                s3.LifecycleRule(
+                    abort_incomplete_multipart_upload_after=Duration.days(1)
+                )
+            ],
         )
 
         entry = Path(__file__).resolve().parent.parent / "src"
@@ -90,8 +127,11 @@ class AppStack(Stack):
                 "CLERK_ISSUER": clerk_issuer,
                 "CLERK_AUTHORIZED_PARTIES": frontend_origins,
                 "ALLOWED_ORIGINS": frontend_origins,
+                "RECIPE_PHOTO_BUCKET": photo_bucket.bucket_name,
             },
         )
+
+        photo_bucket.grant_read_write(lambda_fn)
 
         recipe_table.grant_read_write_data(lambda_fn)
         recipe_tag_table.grant_read_write_data(lambda_fn)
