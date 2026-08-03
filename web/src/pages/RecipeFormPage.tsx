@@ -26,6 +26,7 @@ export default function RecipeFormPage() {
   ]);
   const [isShareable, setIsShareable] = useState(false);
   const [servings, setServings] = useState<number | "">("");
+  const [totalTime, setTotalTime] = useState<number | "">("");
   const [recipeUrl, setRecipeUrl] = useState("");
   const [showParser, setShowParser] = useState(
     searchParams.get("import") === "1",
@@ -96,6 +97,7 @@ export default function RecipeFormPage() {
       );
       setIsShareable(r.is_shareable);
       setServings(r.servings ?? "");
+      setTotalTime(r.total_time ?? "");
       setRecipeUrl(r.import_source_url ?? "");
       setRecipeTags(r.recipe_tags ?? []);
       setImageKey(r.image_key ?? null);
@@ -133,6 +135,7 @@ export default function RecipeFormPage() {
       .then((data) => {
         setTitle(data.title);
         if (data.servings != null) setServings(data.servings);
+        if (data.total_time != null) setTotalTime(data.total_time);
         setIngredients(
           data.ingredients?.length ? data.ingredients : [emptyIngredient()],
         );
@@ -175,6 +178,7 @@ export default function RecipeFormPage() {
       instructions: cleanInstructions,
       is_shareable: isShareable,
       servings: servings === "" ? null : Number(servings),
+      total_time: totalTime === "" ? null : Number(totalTime),
       recipe_tags: recipeTags,
       image_key: imageKey,
       ...(recipeUrl.trim() ? { import_source_url: recipeUrl.trim() } : {}),
@@ -257,6 +261,30 @@ export default function RecipeFormPage() {
         />
         <span className="text-xs text-gray-400">
           people (used to scale shopping lists)
+        </span>
+      </div>
+
+      {/* Total time */}
+      <div className="mt-4 flex items-center gap-2">
+        <label
+          htmlFor="total-time"
+          className="text-sm font-medium text-textgray"
+        >
+          Takes
+        </label>
+        <input
+          id="total-time"
+          type="number"
+          min={1}
+          value={totalTime}
+          onChange={(e) =>
+            setTotalTime(e.target.value === "" ? "" : Number(e.target.value))
+          }
+          placeholder="—"
+          className="w-20 rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+        />
+        <span className="text-xs text-gray-400">
+          minutes (filled in automatically when importing, if the page says)
         </span>
       </div>
 

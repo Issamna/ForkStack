@@ -19,6 +19,8 @@ export interface Recipe {
   import_source_url?: string;
   recipe_tags?: string[];
   servings?: number | null;
+  /** Total time in minutes. Often absent — always render conditionally. */
+  total_time?: number | null;
   /** S3 object key of an uploaded photo; null means use a placeholder. */
   image_key?: string | null;
   /** Short-lived presigned URL, minted per response. Never send this back. */

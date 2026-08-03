@@ -23,6 +23,9 @@ class RecipeIn(BaseModel):
     import_source_url: Optional[str] = None
     recipe_tags: Optional[list[str]] = []
     servings: Optional[int] = None
+    # Total time in minutes. Optional: hand-entered recipes often omit it and
+    # not every imported page publishes one, so every surface must tolerate None.
+    total_time: Optional[int] = None
     # S3 object key for a user-uploaded photo; None falls back to the
     # tag-based placeholder the frontend picks.
     image_key: Optional[str] = None

@@ -263,9 +263,21 @@ def _from_structured(html: str, url: str):
     except Exception:
         servings = None
 
+    # Plenty of pages publish no timing at all, and some report it in odd units;
+    # anything that isn't a sane positive number of minutes is dropped rather
+    # than guessed at.
+    total_time = None
+    try:
+        raw_time = scraper.total_time()
+        if isinstance(raw_time, (int, float)) and 0 < raw_time <= 24 * 60:
+            total_time = int(raw_time)
+    except Exception:
+        total_time = None
+
     return {
         "title": safe(scraper.title, "Untitled Recipe"),
         "servings": servings,
+        "total_time": total_time,
         "ingredients": [parse_ingredient(i) for i in ingredients],
         "instructions": [
             {"step_number": i + 1, "text": step.strip()}
@@ -291,6 +303,8 @@ def bs4_scraper(html: str):
 
     return {
         "title": soup.title.string.strip() if soup.title and soup.title.string else "Untitled Recipe",
+        # The heuristic path has no reliable timing signal; the user fills it in.
+        "total_time": None,
         "ingredients": [parse_ingredient(i) for i in ingredients_raw[:15]],
         "instructions": [
             {"step_number": i + 1, "text": step}
