@@ -83,6 +83,30 @@ Recipes may carry a user-uploaded photo. DynamoDB stores only `image_key` (the S
 
 The primary frontend deploy is **GitHub Pages** via `.github/workflows/deploy-frontend.yml` (builds `web/` with Vite base `/ForkStack/`, publishes to the `gh-pages` branch, copies `index.html`→`404.html` for SPA deep links). CloudFront (FrontendStack) is a secondary mirror built with base `/`. The API base URL comes from `VITE_API_BASE` (`web/.env.production` for deploys; `web/src/lib/api.ts` falls back to the deployed API Gateway) — update it there when the API endpoint changes. Clerk **dev** instances work on any origin (localhost + GitHub Pages) with no origin config; a Clerk **production** instance would need a custom domain (CloudFront, not bare GitHub Pages).
 
+## Shipping a change
+
+**`main` is production.** A push to it runs `.github/workflows/deploy.yml`, which
+deploys `AppStack` and then the frontend from the same commit. Never push
+directly to `main` — go through a PR so CI runs *before* the merge, not after.
+
+1. **Branch** from an up-to-date `main`:
+   `git checkout main && git pull && git checkout -b <type>/<short-name>`
+   Types in use: `feat/`, `fix/`, `chore/`, `release/` (a `release/` branch
+   collects a batch of related fixes behind one PR).
+2. **Commit** as you go. Run `python -m pytest` from `src/` and
+   `npm run typecheck` from `web/` before pushing; run `npm run test:e2e` when
+   the change touches the UI.
+3. **Push the branch and open a PR** (`gh pr create`). `ci.yml` runs backend
+   tests, frontend typecheck + production build, and the Playwright suite on
+   every PR. A branch push never deploys anything.
+4. **Merge** (squash preferred) → `deploy.yml` ships backend and frontend
+   together. Watch it: `gh run watch $(gh run list --workflow Deploy --limit 1 --json databaseId --jq '.[0].databaseId')`.
+
+The deploy is gated on tests, and the frontend job `needs: backend`, so a
+failure leaves production untouched rather than half-updated. That gate is the
+only thing standing between a red build and a broken production — treat a
+failing pipeline as a stop, not a retry.
+
 ## Security invariants (don't regress)
 
 - `api.py` runs with `debug=False` and docs/OpenAPI disabled — don't re-enable in committed code (it leaks internals).
