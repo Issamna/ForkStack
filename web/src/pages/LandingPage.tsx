@@ -1,6 +1,7 @@
 import { SignInButton, SignUpButton, useAuth } from "@clerk/clerk-react";
 import { Navigate } from "react-router-dom";
 import { imageForTags } from "../lib/imageHelper";
+import { appUrl } from "../lib/paths";
 
 const base = import.meta.env.BASE_URL;
 
@@ -37,12 +38,12 @@ export default function LandingPage() {
           >
             How it works
           </a>
-          <SignInButton mode="modal" fallbackRedirectUrl="/recipes">
+          <SignInButton mode="modal" fallbackRedirectUrl={appUrl("/recipes")}>
             <button className="text-[14px] font-medium text-muted transition hover:text-primary">
               Sign in
             </button>
           </SignInButton>
-          <SignUpButton mode="modal" fallbackRedirectUrl="/recipes">
+          <SignUpButton mode="modal" fallbackRedirectUrl={appUrl("/recipes")}>
             <button className="pill-primary">Start free</button>
           </SignUpButton>
         </nav>
@@ -64,12 +65,12 @@ export default function LandingPage() {
               ingredients — just the food you make.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <SignUpButton mode="modal" fallbackRedirectUrl="/recipes">
+              <SignUpButton mode="modal" fallbackRedirectUrl={appUrl("/recipes")}>
                 <button className="h-[50px] rounded-[26px] bg-terracotta px-7 text-[15px] font-semibold text-white transition hover:brightness-95 sm:h-auto sm:py-3.5">
                   Start your recipe book
                 </button>
               </SignUpButton>
-              <SignInButton mode="modal" fallbackRedirectUrl="/recipes">
+              <SignInButton mode="modal" fallbackRedirectUrl={appUrl("/recipes")}>
                 <button className="h-[50px] rounded-[26px] border border-field bg-card px-7 text-[15px] font-semibold text-primary transition hover:border-terracotta-line sm:h-auto sm:py-3.5">
                   I already have one
                 </button>
@@ -180,12 +181,12 @@ export default function LandingPage() {
           Save the first one in about a minute.
         </p>
         <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-          <SignUpButton mode="modal" fallbackRedirectUrl="/recipes">
+          <SignUpButton mode="modal" fallbackRedirectUrl={appUrl("/recipes")}>
             <button className="h-[50px] rounded-[26px] bg-terracotta px-7 text-[15px] font-semibold text-white transition hover:brightness-95 sm:h-auto sm:py-3.5">
               Start your recipe book
             </button>
           </SignUpButton>
-          <SignInButton mode="modal" fallbackRedirectUrl="/recipes">
+          <SignInButton mode="modal" fallbackRedirectUrl={appUrl("/recipes")}>
             <button className="h-[50px] rounded-[26px] border border-field bg-card px-7 text-[15px] font-semibold text-primary transition hover:border-terracotta-line sm:h-auto sm:py-3.5">
               Sign in
             </button>

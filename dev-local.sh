@@ -45,9 +45,14 @@ export INGREDIENT_TABLE=IngredientTable
 export MEAL_PLAN_TABLE=MealPlanTable
 export SHOPPING_LIST_TABLE=ShoppingListTable
 # Real Clerk verification, against the dev instance -- localhost is allowed.
+# WEB_ORIGIN must match the port Vite actually serves on: the backend checks it
+# for CORS *and* as the token's authorized party, so a mismatch fails every
+# request after an otherwise successful login.
+WEB_ORIGIN="${WEB_ORIGIN:-http://localhost:5173}"
 export CLERK_ISSUER=https://mint-chow-13.clerk.accounts.dev
-export CLERK_AUTHORIZED_PARTIES=http://localhost:5173
-export ALLOWED_ORIGINS=http://localhost:5173
+export CLERK_AUTHORIZED_PARTIES="$WEB_ORIGIN"
+export ALLOWED_ORIGINS="$WEB_ORIGIN"
+echo "accepting requests from $WEB_ORIGIN  (override with WEB_ORIGIN=...)"
 
 if [ "${1:-}" = "--seed" ]; then
   if [ -z "${2:-}" ]; then
