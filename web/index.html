@@ -3,8 +3,26 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/x-icon" href="forkstack.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- viewport-fit=cover so the standalone app can paint under the notch;
+         the sticky bars use env(safe-area-inset-*) to stay clear of it. -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
     <title>Fork-stack</title>
+
+    <!-- Installable to a home screen. Every href here is relative, so it
+         resolves under '/ForkStack/' on GitHub Pages and '/' in dev without
+         needing the base path templated in. Offline and push are deliberately
+         out of scope: a service worker means cache invalidation, and a stale
+         bundle talking to a live API is worse than no offline mode. -->
+    <link rel="manifest" href="manifest.webmanifest" />
+    <meta name="theme-color" content="#C0563A" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="fork-stack" />
     <!-- Two families only: Newsreader for titles and recipe names, IBM Plex
          Sans for everything else. Don't add a third. -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />

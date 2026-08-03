@@ -14,6 +14,13 @@ body {
      Cards carry a 1px `line` border and no shadow.
      --------------------------------------------------------------------- */
 
+  /* Standalone (installed) mode paints under the iOS home indicator, so
+     anything pinned to the bottom needs to clear it. Harmless in a browser,
+     where the inset resolves to 0. */
+  .safe-bottom {
+    padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+  }
+
   .app-header {
     @apply flex h-[60px] items-center gap-4 border-b border-line bg-paper px-4 sm:px-[22px];
   }

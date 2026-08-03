@@ -424,7 +424,7 @@ export default function ShoppingListPage() {
       {/* Sticky add bar (phone) */}
       <form
         onSubmit={addItem}
-        className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-2 border-t border-line bg-paper px-4 py-3 lg:hidden"
+        className="safe-bottom fixed inset-x-0 bottom-0 z-30 flex items-center gap-2 border-t border-line bg-paper px-4 pt-3 lg:hidden"
       >
         <input
           type="text"

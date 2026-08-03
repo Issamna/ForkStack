@@ -449,7 +449,7 @@ export default function RecipesPage() {
 
       {/* ---------------- Mobile bottom sheet ---------------- */}
       {selected && sheetOpen && (
-        <div className="fixed inset-x-0 bottom-0 z-40 rounded-t-2xl border-t border-line bg-card p-4 shadow-sheet lg:hidden">
+        <div className="safe-bottom fixed inset-x-0 bottom-0 z-40 rounded-t-2xl border-t border-line bg-card px-4 pt-4 shadow-sheet lg:hidden">
           <button
             onClick={() => setSheetOpen(false)}
             aria-label="Close preview"

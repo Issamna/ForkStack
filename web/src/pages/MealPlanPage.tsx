@@ -537,7 +537,7 @@ export default function MealPlanPage() {
       )}
 
       {/* Sticky footer (phone) */}
-      <div className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-between gap-3 bg-primary px-4 py-3 lg:hidden">
+      <div className="safe-bottom fixed inset-x-0 bottom-0 z-30 flex items-center justify-between gap-3 bg-primary px-4 pt-3 lg:hidden">
         <div className="min-w-0">
           <div className="text-[13px] font-semibold text-paper">
             {outstanding.length} items to buy
