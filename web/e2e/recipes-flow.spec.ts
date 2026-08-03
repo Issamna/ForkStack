@@ -103,3 +103,27 @@ test.describe("account screen", () => {
     await expect(page.getByRole("button", { name: "Send report" })).toBeVisible();
   });
 });
+
+test.describe("step ingredient links", () => {
+  test("suggests ingredients per step and lets you curate them", async ({ page }) => {
+    await page.goto("/recipes");
+    await page.getByLabel("Filter recipes").fill("Creamy");
+    await page.locator("button.index-row").first().click();
+    await page.getByRole("link", { name: /Open full recipe|Open recipe/ }).first().click();
+    await page.getByRole("link", { name: "Edit" }).click();
+
+    // Step 2 names chicken, garlic, paprika and so on, so those are suggested
+    // without anyone having curated the recipe.
+    const chip = page.getByRole("button", { name: /^Remove .* from step 2$/ });
+    await expect(chip.first()).toBeVisible();
+    const before = await chip.count();
+    expect(before).toBeGreaterThan(2);
+
+    // Removing one freezes the suggestion into a curated list.
+    await chip.first().click();
+    await expect(chip).toHaveCount(before - 1);
+    await expect(
+      page.getByRole("button", { name: "Reset step 2 to suggested ingredients" }),
+    ).toBeVisible();
+  });
+});

@@ -12,6 +12,10 @@ class Ingredient(BaseModel):
 class InstructionStep(BaseModel):
     step_number: int
     text: str
+    # Indices into the recipe's ingredient list that this step uses. None means
+    # the cook never curated it, and readers fall back to matching the step text
+    # -- an empty list means "deliberately none", which is a different thing.
+    ingredients: Optional[List[int]] = None
 
 
 class RecipeIn(BaseModel):

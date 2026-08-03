@@ -7,6 +7,12 @@ export interface Ingredient {
 export interface InstructionStep {
   step_number: number;
   text: string;
+  /**
+   * Indices into the recipe's ingredients that this step uses.
+   * `null`/absent = never curated, so readers fall back to suggesting from the
+   * step text. An empty array means "deliberately none".
+   */
+  ingredients?: number[] | null;
 }
 
 export interface Recipe {

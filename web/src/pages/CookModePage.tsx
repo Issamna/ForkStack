@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../lib/api";
-import { ingredientsForStep } from "../lib/steps";
+import { suggestIngredientsForStep } from "../lib/steps";
 import type { Recipe } from "../lib/types";
 
 /**
@@ -47,12 +47,14 @@ export default function CookModePage() {
   const steps = recipe?.instructions ?? [];
   const current = steps[step];
 
-  // Ingredients this step actually mentions -- see lib/steps.ts for why the
-  // matching is whole-word rather than a substring test.
-  const forThisStep = useMemo(
-    () => (recipe && current ? ingredientsForStep(recipe.ingredients, current.text) : []),
-    [recipe, current],
-  );
+  // Prefer what the cook attached to this step in the editor; only guess from
+  // the step text for recipes that were never curated.
+  const forThisStep = useMemo(() => {
+    if (!recipe || !current) return [];
+    const saved = current.ingredients;
+    const indices = saved ?? suggestIngredientsForStep(recipe.ingredients, current.text);
+    return indices.map((i) => recipe.ingredients[i]).filter(Boolean);
+  }, [recipe, current]);
 
   if (!recipe) {
     return (

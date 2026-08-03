@@ -145,6 +145,37 @@ class TestRecipeRoundTrip:
         assert "Theirs" not in titles
 
 
+class TestStepIngredients:
+    """Per-step ingredient links: None means "never curated", [] means "none"."""
+
+    def test_links_round_trip(self, client):
+        payload = make_recipe()
+        payload["instructions"] = [
+            {"step_number": 1, "text": "Boil the pasta.", "ingredients": [0]},
+            {"step_number": 2, "text": "Stir it through.", "ingredients": [0, 1]},
+        ]
+        rid = client.post("/recipes", json=payload).json()["recipe_id"]
+
+        steps = client.get(f"/recipes/{rid}").json()["instructions"]
+        assert steps[0]["ingredients"] == [0]
+        assert steps[1]["ingredients"] == [0, 1]
+
+    def test_uncurated_steps_stay_null(self, client):
+        """None has to survive: it's what tells readers to fall back to
+        matching the step text rather than showing nothing."""
+        rid = client.post("/recipes", json=make_recipe()).json()["recipe_id"]
+        steps = client.get(f"/recipes/{rid}").json()["instructions"]
+        assert steps[0]["ingredients"] is None
+
+    def test_empty_list_is_not_null(self, client):
+        payload = make_recipe()
+        payload["instructions"] = [
+            {"step_number": 1, "text": "Preheat the oven.", "ingredients": []}
+        ]
+        rid = client.post("/recipes", json=payload).json()["recipe_id"]
+        assert client.get(f"/recipes/{rid}").json()["instructions"][0]["ingredients"] == []
+
+
 class TestPhotos:
     def test_presigned_post_targets_the_bucket(self, client):
         body = client.post(
