@@ -13,7 +13,10 @@ export interface InstructionStep {
    * step text. An empty array means "deliberately none".
    */
   ingredients?: number[] | null;
-  /** Timer length in seconds; absent means fall back to parsing the text. */
+  /**
+   * Timer length in seconds. Absent/null = never set, so readers parse the
+   * step text; 0 = deliberately no timer.
+   */
   duration_seconds?: number | null;
 }
 

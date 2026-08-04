@@ -24,7 +24,10 @@ export function parseDuration(text: string): number | null {
   let lastEnd = -1;
 
   while ((match = DURATION.exec(text)) !== null) {
-    const unit = match[2].toLowerCase().replace(/s$/, "").replace(/^secs?$/, "sec");
+    // Strip the plural only on words -- doing it blindly turns the
+    // single-letter unit "s" into an empty string, so "90s" parsed as nothing.
+    const raw = match[2].toLowerCase();
+    const unit = raw.length > 1 ? raw.replace(/s$/, "") : raw;
     const seconds = UNIT_SECONDS[unit] ?? UNIT_SECONDS[unit.slice(0, 3)] ?? null;
     if (seconds === null) continue;
     const value = Number(match[1]) * seconds;
@@ -56,4 +59,31 @@ export function formatClock(seconds: number): string {
   const sec = s % 60;
   const pad = (n: number) => String(n).padStart(2, "0");
   return h ? `${h}:${pad(m)}:${pad(sec)}` : `${pad(m)}:${pad(sec)}`;
+}
+
+/**
+ * Parse what someone types into the editor's timer box.
+ *
+ * Accepts "25" (bare numbers are minutes -- almost every timer is),
+ * "1:30" (mm:ss), "90s", "20 min", "1h 30m". Returns seconds, 0 for an empty
+ * box (an explicit "no timer"), or null when it can't be read at all.
+ */
+export function parseTimerInput(raw: string): number | null {
+  const value = raw.trim().toLowerCase();
+  if (!value) return 0;
+
+  const clock = value.match(/^(\d+):([0-5]?\d)$/);
+  if (clock) return Number(clock[1]) * 60 + Number(clock[2]);
+
+  if (/^\d+$/.test(value)) return Number(value) * 60;
+
+  const parsed = parseDuration(value);
+  return parsed ?? null;
+}
+
+/** How a stored duration appears in that box: "25" or "1:30". */
+export function formatTimerInput(seconds: number | null | undefined): string {
+  if (!seconds) return "";
+  if (seconds % 60 === 0) return String(seconds / 60);
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 }

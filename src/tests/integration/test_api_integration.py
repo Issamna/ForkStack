@@ -191,8 +191,23 @@ class TestStepTimers:
         rid = client.post("/recipes", json=make_recipe()).json()["recipe_id"]
         assert client.get(f"/recipes/{rid}").json()["instructions"][0]["duration_seconds"] is None
 
+    def test_zero_means_no_timer_and_survives(self, client):
+        """Regression: 0 and None both used to be "no duration", so clearing a
+        timer fell back to parsing the step text and the timer came back."""
+        payload = make_recipe()
+        payload["instructions"] = [
+            {
+                "step_number": 1,
+                # The text still states a duration; the 0 must win.
+                "text": "Roast for 25 minutes.",
+                "duration_seconds": 0,
+            }
+        ]
+        rid = client.post("/recipes", json=payload).json()["recipe_id"]
+        assert client.get(f"/recipes/{rid}").json()["instructions"][0]["duration_seconds"] == 0
+
     def test_absurd_durations_are_refused(self, client):
-        for bad in (0, -60, 25 * 3600):
+        for bad in (-60, 25 * 3600):
             payload = make_recipe()
             payload["instructions"] = [
                 {"step_number": 1, "text": "Wait.", "duration_seconds": bad}

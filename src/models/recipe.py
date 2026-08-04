@@ -17,8 +17,10 @@ class InstructionStep(BaseModel):
     # -- an empty list means "deliberately none", which is a different thing.
     ingredients: Optional[List[int]] = None
     # Timer length in seconds. None means never set, and readers fall back to
-    # reading a duration out of the step text.
-    duration_seconds: Optional[int] = Field(default=None, ge=1, le=24 * 3600)
+    # reading a duration out of the step text; 0 means the cook deliberately
+    # wants no timer here -- without that distinction a cleared timer would be
+    # re-derived from the text and reappear.
+    duration_seconds: Optional[int] = Field(default=None, ge=0, le=24 * 3600)
 
 
 class RecipeIn(BaseModel):

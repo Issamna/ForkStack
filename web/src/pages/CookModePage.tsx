@@ -52,8 +52,9 @@ export default function CookModePage() {
 
   // Whatever the editor stored, else read one out of the step text so recipes
   // nobody has curated still get a timer where the text says one.
+  // null = never set, so read the text; 0 = the cook said no timer here.
   const stepSeconds = current
-    ? (current.duration_seconds ?? parseDuration(current.text))
+    ? (current.duration_seconds ?? parseDuration(current.text)) || null
     : null;
 
   // Prefer what the cook attached to this step in the editor; only guess from
