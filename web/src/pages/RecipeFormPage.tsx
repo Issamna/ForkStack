@@ -5,6 +5,7 @@ import { imageForTags } from "../lib/imageHelper";
 import { ACCEPTED_TYPES, uploadRecipePhoto } from "../lib/photoUpload";
 import { getDefaultPublic, getDefaultServings } from "../lib/preferences";
 import { suggestIngredientsForStep } from "../lib/steps";
+import { formatTimerInput, parseDuration, parseTimerInput } from "../lib/duration";
 import type { Ingredient, InstructionStep, Tag } from "../lib/types";
 
 const emptyIngredient = (): Ingredient => ({
@@ -137,7 +138,9 @@ export default function RecipeFormPage() {
       setTitle(r.title);
       setIngredients(r.ingredients.length ? r.ingredients : [emptyIngredient()]);
       setInstructions(
-        r.instructions.length ? r.instructions : [{ step_number: 1, text: "" }],
+        seedDurations(
+          r.instructions.length ? r.instructions : [{ step_number: 1, text: "" }],
+        ),
       );
       setIsShareable(r.is_shareable);
       setServings(r.servings ?? "");
@@ -157,6 +160,27 @@ export default function RecipeFormPage() {
   /** Ingredients shown for a step: the curated list, or a live suggestion. */
   function stepIngredients(step: InstructionStep): number[] {
     return step.ingredients ?? suggestIngredientsForStep(ingredients, step.text);
+  }
+
+  /**
+   * Give every step an explicit duration on load: stored if it has one, else
+   * read from its text. Deriving it at render time instead meant clearing the
+   * box fell straight back to the parsed value, so a timer couldn't be deleted.
+   */
+  function seedDurations(steps: InstructionStep[]): InstructionStep[] {
+    return steps.map((s) => ({
+      ...s,
+      duration_seconds: s.duration_seconds ?? parseDuration(s.text) ?? 0,
+    }));
+  }
+
+  /** Empty box parses to 0 -- "no timer" -- which is not the same as unset. */
+  function setStepDuration(i: number, raw: string) {
+    const seconds = parseTimerInput(raw);
+    if (seconds === null) return;
+    setInstructions((list) =>
+      list.map((s, idx) => (idx === i ? { ...s, duration_seconds: seconds } : s)),
+    );
   }
 
   /** Editing the chips freezes the suggestion into a real list for that step. */
@@ -219,7 +243,7 @@ export default function RecipeFormPage() {
           ? reindex(data.instructions)
           : [{ step_number: 1, text: "" }];
         setIngredients(ing);
-        setInstructions(steps);
+        setInstructions(seedDurations(steps));
         setParseSummary(
           `Imported ${data.ingredients?.length ?? 0} ingredients and ${
             data.instructions?.length ?? 0
@@ -251,6 +275,9 @@ export default function RecipeFormPage() {
       text: s.text.trim(),
       // null stays null, so an uncurated step keeps falling back to matching.
       ingredients: s.ingredients ?? null,
+      // 0 is preserved deliberately: it records "no timer here", so the text
+      // is never re-parsed and the timer never comes back.
+      duration_seconds: s.duration_seconds ?? parseDuration(s.text) ?? 0,
     }));
 
     if (!cleanTitle) return setFormError("Please add a recipe title.");
@@ -605,6 +632,21 @@ export default function RecipeFormPage() {
                             )}
                           </select>
                         )}
+
+                        <label className="ml-1 flex items-center gap-1 text-[12px] text-muted">
+                          <span className="eyebrow">Timer</span>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={formatTimerInput(step.duration_seconds)}
+                            onChange={(e) => setStepDuration(i, e.target.value)}
+                            placeholder="—"
+                            title="Minutes, or mm:ss for shorter steps"
+                            aria-label={`Timer for step ${i + 1}: minutes, or mm:ss`}
+                            className="w-16 rounded border border-field bg-card px-1.5 py-0.5 text-[12px] text-primary focus:outline-none focus:ring-2 focus:ring-accent"
+                          />
+                          <span className="text-muted-2">min or m:ss</span>
+                        </label>
 
                         {step.ingredients != null && (
                           <button

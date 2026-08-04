@@ -176,6 +176,45 @@ class TestStepIngredients:
         assert client.get(f"/recipes/{rid}").json()["instructions"][0]["ingredients"] == []
 
 
+class TestStepTimers:
+    def test_duration_round_trips(self, client):
+        payload = make_recipe()
+        payload["instructions"] = [
+            {"step_number": 1, "text": "Simmer for 20 minutes.", "duration_seconds": 1200}
+        ]
+        rid = client.post("/recipes", json=payload).json()["recipe_id"]
+        step = client.get(f"/recipes/{rid}").json()["instructions"][0]
+        assert step["duration_seconds"] == 1200
+
+    def test_absent_duration_stays_null(self, client):
+        """None is what tells cook mode to read a duration out of the text."""
+        rid = client.post("/recipes", json=make_recipe()).json()["recipe_id"]
+        assert client.get(f"/recipes/{rid}").json()["instructions"][0]["duration_seconds"] is None
+
+    def test_zero_means_no_timer_and_survives(self, client):
+        """Regression: 0 and None both used to be "no duration", so clearing a
+        timer fell back to parsing the step text and the timer came back."""
+        payload = make_recipe()
+        payload["instructions"] = [
+            {
+                "step_number": 1,
+                # The text still states a duration; the 0 must win.
+                "text": "Roast for 25 minutes.",
+                "duration_seconds": 0,
+            }
+        ]
+        rid = client.post("/recipes", json=payload).json()["recipe_id"]
+        assert client.get(f"/recipes/{rid}").json()["instructions"][0]["duration_seconds"] == 0
+
+    def test_absurd_durations_are_refused(self, client):
+        for bad in (-60, 25 * 3600):
+            payload = make_recipe()
+            payload["instructions"] = [
+                {"step_number": 1, "text": "Wait.", "duration_seconds": bad}
+            ]
+            assert client.post("/recipes", json=payload).status_code == 422, bad
+
+
 class TestPhotos:
     def test_presigned_post_targets_the_bucket(self, client):
         body = client.post(

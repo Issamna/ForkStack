@@ -127,3 +127,70 @@ test.describe("step ingredient links", () => {
     ).toBeVisible();
   });
 });
+
+test.describe("cook mode timers", () => {
+  test("starts a timer from the step and runs several at once", async ({ page }) => {
+    await page.goto("/recipes");
+    await page.getByLabel("Filter recipes").fill("Lentil");
+    await page.locator("button.index-row").first().click();
+    await page.getByRole("link", { name: /Open full recipe|Open recipe/ }).first().click();
+    await page.getByRole("link", { name: "Cook mode" }).click();
+
+    // Step 1 says "for 25 minutes", so the duration is read from the text even
+    // though nobody has set one in the editor.
+    const startBtn = page.getByRole("button", { name: /Start .* timer/ });
+    await expect(startBtn).toBeVisible();
+    await startBtn.click();
+    await expect(page.getByRole("button", { name: /Dismiss|Cancel/ }).first()).toBeVisible();
+
+    // Step 2 says "for 20 minutes" -- starting it must not replace the first.
+    await page.getByRole("button", { name: /Next step/ }).click();
+    await page.getByRole("button", { name: /Start .* timer/ }).click();
+    await expect(page.getByRole("button", { name: /Dismiss|Cancel/ })).toHaveCount(2);
+  });
+
+  test("a step with no stated duration offers no timer", async ({ page }) => {
+    await page.goto("/recipes");
+    await page.getByLabel("Filter recipes").fill("Lentil");
+    await page.locator("button.index-row").first().click();
+    await page.getByRole("link", { name: /Open full recipe|Open recipe/ }).first().click();
+    await page.getByRole("link", { name: "Cook mode" }).click();
+
+    // Step 3 is "blend until smooth" -- no number, so no timer.
+    await page.getByRole("button", { name: /Next step/ }).click();
+    await page.getByRole("button", { name: /Next step|Last step/ }).click();
+    await expect(page.getByRole("button", { name: /Start .* timer/ })).toHaveCount(0);
+  });
+});
+
+test.describe("editing step timers", () => {
+  test("a timer can be deleted and stays deleted", async ({ page }) => {
+    // Regression: clearing the box fell back to the duration parsed from the
+    // step text, so it snapped straight back and couldn't be removed.
+    await page.goto("/recipes");
+    await page.getByLabel("Filter recipes").fill("Lentil");
+    await page.locator("button.index-row").first().click();
+    await page.getByRole("link", { name: /Open full recipe|Open recipe/ }).first().click();
+    await page.getByRole("link", { name: "Edit" }).click();
+
+    // Set it first, so the test doesn't depend on the seed still having one.
+    const timer = page.getByLabel(/^Timer for step 1/);
+    await timer.fill("25");
+    await expect(timer).toHaveValue("25");
+
+    await timer.fill("");
+    await expect(timer).toHaveValue("");
+  });
+
+  test("accepts mm:ss for short steps", async ({ page }) => {
+    await page.goto("/recipes");
+    await page.getByLabel("Filter recipes").fill("Lentil");
+    await page.locator("button.index-row").first().click();
+    await page.getByRole("link", { name: /Open full recipe|Open recipe/ }).first().click();
+    await page.getByRole("link", { name: "Edit" }).click();
+
+    const timer = page.getByLabel(/^Timer for step 1/);
+    await timer.fill("1:30");
+    await expect(timer).toHaveValue("1:30");
+  });
+});
